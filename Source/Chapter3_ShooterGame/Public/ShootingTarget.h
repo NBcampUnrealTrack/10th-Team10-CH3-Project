@@ -8,6 +8,7 @@ class UStaticMeshComponent;
 class UInstancedStaticMeshComponent;
 class UMaterialInterface;
 class UStaticMesh;
+class UPrimitiveComponent;
 
 // 로컬 -X 방향이 정면인 표적. Point Damage의 실제 명중 위치에 표시를 남긴다.
 UCLASS()
@@ -29,6 +30,10 @@ public:
 
 protected:
     virtual void BeginPlay() override;
+    virtual bool IsTargetComponent(const UPrimitiveComponent* component) const;
+
+    UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Target")
+    bool showPaperTarget_ = true;
 
     UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Target|Assets")
     TObjectPtr<UStaticMesh> boardMeshAsset_ = nullptr;

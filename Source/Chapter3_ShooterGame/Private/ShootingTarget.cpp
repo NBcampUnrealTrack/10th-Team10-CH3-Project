@@ -93,11 +93,14 @@ void AShootingTarget::BeginPlay()
 void AShootingTarget::ApplyTargetAssets()
 {
     targetBoard_->SetStaticMesh(boardMeshAsset_);
+    targetBoard_->SetVisibility(showPaperTarget_);
+    targetBoard_->SetCollisionEnabled(showPaperTarget_ ? ECollisionEnabled::QueryOnly : ECollisionEnabled::NoCollision);
     hitMarks_->SetStaticMesh(diskMeshAsset_);
     hitMarkOutlines_->SetStaticMesh(diskMeshAsset_);
     for (UStaticMeshComponent* ring : targetRings_)
     {
         ring->SetStaticMesh(diskMeshAsset_);
+        ring->SetVisibility(showPaperTarget_);
     }
 }
 
@@ -133,12 +136,17 @@ float AShootingTarget::TakeDamage(float damageAmount, const FDamageEvent& damage
     if (appliedDamage > 0.0f && damageEvent.IsOfType(FPointDamageEvent::ClassID))
     {
         const FPointDamageEvent& pointDamage = static_cast<const FPointDamageEvent&>(damageEvent);
-        if (pointDamage.HitInfo.GetComponent() == targetBoard_)
+        if (IsTargetComponent(pointDamage.HitInfo.GetComponent()))
         {
             AddHitMark(pointDamage.HitInfo);
         }
     }
     return appliedDamage;
+}
+
+bool AShootingTarget::IsTargetComponent(const UPrimitiveComponent* component) const
+{
+    return showPaperTarget_ && component == targetBoard_;
 }
 
 void AShootingTarget::AddHitMark(const FHitResult& hitResult)

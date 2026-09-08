@@ -71,8 +71,7 @@ void ADistractionCoin::BeginPlay()
 
 void ADistractionCoin::FitCoinMesh()
 {
-    coinMesh_->SetStaticMesh(coinMeshAsset_);
-    const UStaticMesh* mesh = coinMeshAsset_;
+    const UStaticMesh* mesh = coinMesh_->GetStaticMesh();
     if (!mesh)
     {
         coinMesh_->SetRelativeTransform(FTransform::Identity);
@@ -94,7 +93,7 @@ void ADistractionCoin::FitCoinMesh()
     collision_->SetSphereRadius(FMath::Max(kDefaultCollisionRadius, bounds.SphereRadius * meshScale));
 }
 
-void ADistractionCoin::IgnoreThrower()
+void ADistractionCoin::IgnoreThrower() // 투척자와 그 자식 액터를 무시하도록 설정한다.
 {
     APawn* thrower = GetInstigator();
     collision_->IgnoreActorWhenMoving(GetOwner(), true);
@@ -112,9 +111,9 @@ void ADistractionCoin::IgnoreThrower()
     }
 }
 
-float ADistractionCoin::GetCollisionRadius() const
+float ADistractionCoin::GetCollisionRadius() const // 코인 메시의 실제 크기에 맞춘 충돌 구 반지름을 반환한다.
 {
-    const UStaticMesh* mesh = coinMeshAsset_;
+    const UStaticMesh* mesh = coinMesh_->GetStaticMesh();
     if (mesh)
     {
         const FBoxSphereBounds bounds = mesh->GetBounds();
@@ -127,7 +126,7 @@ float ADistractionCoin::GetCollisionRadius() const
     return collision_->GetScaledSphereRadius();
 }
 
-void ADistractionCoin::LaunchCoin(const FVector& launchVelocity)
+void ADistractionCoin::LaunchCoin(const FVector& launchVelocity) // 투척 속도를 설정하고 투사체 이동을 활성화한다.
 {
     if (hasLaunched_ || hasLanded_ || launchVelocity.IsNearlyZero() || launchVelocity.ContainsNaN())
     {
@@ -140,7 +139,7 @@ void ADistractionCoin::LaunchCoin(const FVector& launchVelocity)
     projectileMovement_->Activate(true);
 }
 
-void ADistractionCoin::HandleProjectileStop(const FHitResult& hitResult)
+void ADistractionCoin::HandleProjectileStop(const FHitResult& hitResult) // 투사체가 충돌했을 때 호출된다. 착지점에서 소리를 재생하고 AI에게 자극을 보고한다.
 {
     if (hasLanded_ || !hitResult.bBlockingHit)
     {
@@ -149,7 +148,7 @@ void ADistractionCoin::HandleProjectileStop(const FHitResult& hitResult)
 
     hasLanded_ = true;
     collision_->SetCollisionEnabled(ECollisionEnabled::NoCollision);
-    const FVector landingLocation = hitResult.ImpactPoint;
+	const FVector landingLocation = hitResult.ImpactPoint; // 착지점 위치를 보고한다.
     const float effectiveNoiseRange = FMath::Max(0.0f, noiseRange_);
 
     // 자극의 위치는 착지점, 소스는 코인이다. 투척자 위치로 AI가 향하지 않게 한다.

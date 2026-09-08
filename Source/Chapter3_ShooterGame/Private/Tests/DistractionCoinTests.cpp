@@ -6,6 +6,7 @@
 #include "Components/BoxComponent.h"
 #include "Components/StaticMeshComponent.h"
 #include "Engine/Engine.h"
+#include "Engine/StaticMesh.h"
 #include "Engine/World.h"
 #include "GameFramework/ProjectileMovementComponent.h"
 #include "GameFramework/Pawn.h"
@@ -170,6 +171,43 @@ bool FCoinLandingTest::RunTest(const FString& parameters)
     testWorld.AdvanceFrames(kFlightTestFrames);
     TestFalse(TEXT("Zero noise range disables hearing instead of making it unlimited"),
         nearListener->GetActorsPerception(silentCoin, info));
+    return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FCoinMeshSelectionTest, "CH3.Coin.ComponentMeshSelection",
+    EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FCoinMeshSelectionTest::RunTest(const FString& parameters)
+{
+    FCoinTestWorld testWorld = {};
+    UClass* coinClass = LoadClass<ADistractionCoin>(nullptr,
+        TEXT("/Game/Shooting/Blueprints/BP_DistractionCoin.BP_DistractionCoin_C"));
+    UStaticMesh* selectedMesh = LoadObject<UStaticMesh>(nullptr, TEXT("/Engine/BasicShapes/Cube.Cube"));
+    if (!TestNotNull(TEXT("Coin Blueprint loads"), coinClass)
+        || !TestNotNull(TEXT("Alternative mesh loads"), selectedMesh))
+    {
+        return false;
+    }
+
+    const FTransform spawnTransform(FVector(0.0f, 0.0f, 160.0f));
+    ADistractionCoin* coin = testWorld.world_->SpawnActorDeferred<ADistractionCoin>(coinClass, spawnTransform);
+    if (!TestNotNull(TEXT("Deferred coin spawned"), coin))
+    {
+        return false;
+    }
+    UStaticMeshComponent* meshComponent = coin->FindComponentByClass<UStaticMeshComponent>();
+    meshComponent->SetStaticMesh(selectedMesh);
+    const float expectedRadius = coin->GetCollisionRadius();
+    coin->FinishSpawning(spawnTransform);
+    TestTrue(TEXT("BeginPlay ran"), coin->HasActorBegunPlay());
+    TestTrue(TEXT("Construction and BeginPlay preserve the selected component mesh"),
+        meshComponent->GetStaticMesh() == selectedMesh);
+    TestTrue(TEXT("Spawn clearance matches fitted collision"),
+        FMath::IsNearlyEqual(expectedRadius, coin->GetCollisionRadius()));
+
+    meshComponent->SetStaticMesh(nullptr);
+    coin->OnConstruction(coin->GetActorTransform());
+    TestNull(TEXT("Selecting None keeps the coin mesh empty"), meshComponent->GetStaticMesh().Get());
     return true;
 }
 

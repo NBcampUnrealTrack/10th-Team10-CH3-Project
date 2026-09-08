@@ -7,7 +7,6 @@
 class APawn;
 class USphereComponent;
 class UStaticMeshComponent;
-class UStaticMesh;
 class UProjectileMovementComponent;
 class USoundBase;
 
@@ -37,9 +36,6 @@ public:
 
 protected:
     virtual void BeginPlay() override;
-
-    UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Coin|Assets")
-    TObjectPtr<UStaticMesh> coinMeshAsset_ = nullptr;
 
     UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Coin")
     TObjectPtr<USphereComponent> collision_ = nullptr;
