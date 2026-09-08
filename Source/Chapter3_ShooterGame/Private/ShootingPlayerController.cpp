@@ -5,6 +5,7 @@
 
 #include "M1911WeaponView.h"
 #include "DistractionCoin.h"
+#include "SlowMotionSkillComponent.h"
 #include "Camera/PlayerCameraManager.h"
 
 #include "DrawDebugHelpers.h"
@@ -49,6 +50,13 @@ AShootingPlayerController::AShootingPlayerController()
     coinThrowSpeed_ = kDefaultCoinThrowSpeed;
     coinUpwardSpeed_ = kDefaultCoinUpwardSpeed;
     coinThrowInterval_ = kDefaultCoinThrowInterval;
+    slowMotionSkill_ = CreateDefaultSubobject<USlowMotionSkillComponent>(TEXT("SlowMotionSkill"));
+}
+
+bool AShootingPlayerController::TryActivateSlowMotion()
+{
+    return IsLocalController() && IsValid(GetPawn()) && slowMotionSkill_
+        && slowMotionSkill_->TryActivateSlowMotion();
 }
 
 void AShootingPlayerController::SetupInputComponent()

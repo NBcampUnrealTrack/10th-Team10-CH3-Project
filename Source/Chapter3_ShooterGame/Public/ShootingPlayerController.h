@@ -12,6 +12,7 @@ class UInputAction;
 class UInputMappingContext;
 class AM1911WeaponView;
 class ADistractionCoin;
+class USlowMotionSkillComponent;
 
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnCoinThrown, ADistractionCoin*, coin);
 
@@ -35,6 +36,9 @@ public:
 
     UFUNCTION(BlueprintCallable, Category = "Coin")
     void ThrowCoin();
+
+    UFUNCTION(BlueprintCallable, Category = "Skill|Slow Motion")
+    bool TryActivateSlowMotion();
 
     // 생성 직후 호출된다. 여기서 coin의 onCoinLanded_에 바인딩할 수 있다.
     UPROPERTY(BlueprintAssignable, Category = "Coin")
@@ -64,6 +68,9 @@ protected:
 
     UPROPERTY(VisibleInstanceOnly, BlueprintReadOnly, Category = "Shooting|Weapon")
     TObjectPtr<AM1911WeaponView> weaponView_ = nullptr;
+
+    UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Skills")
+    TObjectPtr<USlowMotionSkillComponent> slowMotionSkill_ = nullptr;
 
     UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = "Coin")
     TSubclassOf<ADistractionCoin> coinClass_ = nullptr;
