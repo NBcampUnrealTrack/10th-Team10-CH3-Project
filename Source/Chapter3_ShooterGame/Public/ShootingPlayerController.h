@@ -4,6 +4,7 @@
 
 #include "CoreMinimal.h"
 #include "GameFramework/PlayerController.h"
+#include "TimerManager.h"
 #include "ShootingPlayerController.generated.h"
 
 class UEnhancedInputLocalPlayerSubsystem;
@@ -28,6 +29,27 @@ public:
     UFUNCTION(BlueprintCallable, Category = "Shooting")
     void Fire();
 
+    UFUNCTION(BlueprintPure, Category = "Shooting|Magazine")
+    int32 GetCurrentAmmo() const
+    {
+        return currentAmmo_;
+    }
+
+    UFUNCTION(BlueprintPure, Category = "Shooting|Magazine")
+    int32 GetMagazineCapacity() const
+    {
+        return FMath::Max(1, magazineCapacity_);
+    }
+
+    UFUNCTION(BlueprintPure, Category = "Shooting|Magazine")
+    bool IsReloading() const
+    {
+        return reloading_;
+    }
+
+    UFUNCTION(BlueprintPure, Category = "Shooting|Magazine")
+    float GetReloadProgress() const;
+
     UFUNCTION(BlueprintCallable, Category = "Shooting")
     void StartAiming();
 
@@ -48,6 +70,7 @@ public:
     virtual void FlushPressedKeys() override;
 
 protected:
+    virtual void BeginPlay() override;
     virtual void SetupInputComponent() override;
     virtual void EndPlay(const EEndPlayReason::Type endPlayReason) override;
 
@@ -59,6 +82,12 @@ protected:
 
     UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = "Shooting", meta = (ClampMin = "0.0", Units = "s"))
     float fireInterval_ = 0.0f;
+
+    UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Shooting|Magazine", meta = (ClampMin = "1", UIMin = "1"))
+    int32 magazineCapacity_ = 10;
+
+    UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Shooting|Magazine", meta = (ClampMin = "0.2", Units = "s"))
+    float reloadDuration_ = 0.0f;
 
     UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = "Shooting|Debug")
     bool drawDebugShot_ = false;
@@ -96,7 +125,14 @@ protected:
     UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Input")
     TObjectPtr<UInputMappingContext> inputMappingContext_ = nullptr;
 
+    UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = "Weapon View|Recoil", meta = (ClampMin = "0.01", Units = "s"))
+    float reloadDelay_ = 0.1f;
+
+    FTimerHandle reloadDelayTimer_ = {};
+
 private:
+    void StartReload();
+    void FinishReload();
     void BindGameplayInput(UEnhancedInputComponent* enhancedInput);
     void ApplyShotDamage(const FHitResult& hitResult, const FVector& shotDirection);
     void DrawShotDebug(const FVector& start, const FVector& end, const FHitResult& hitResult);
@@ -107,4 +143,12 @@ private:
     double nextFireTime_ = 0.0;
     double nextCoinThrowTime_ = 0.0;
     bool aimHeld_ = false;
+
+    UPROPERTY(VisibleInstanceOnly, BlueprintReadOnly, Category = "Shooting|Magazine", meta = (AllowPrivateAccess = "true"))
+    int32 currentAmmo_ = 0;
+
+    UPROPERTY(VisibleInstanceOnly, BlueprintReadOnly, Category = "Shooting|Magazine", meta = (AllowPrivateAccess = "true"))
+    bool reloading_ = false;
+
+    FTimerHandle reloadTimer_ = {};
 };

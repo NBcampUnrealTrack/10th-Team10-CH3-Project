@@ -1,6 +1,7 @@
 #include "M1911WeaponView.h"
 
 #include "Components/PointLightComponent.h"
+#include "Components/PoseableMeshComponent.h"
 #include "Components/SceneComponent.h"
 #include "Components/SkeletalMeshComponent.h"
 #include "Components/StaticMeshComponent.h"
@@ -23,6 +24,20 @@ namespace
     constexpr float kFlashDuration = 0.045f;
     constexpr float kFlashLightIntensity = 1200.0f;
     constexpr float kFlashLightRadius = 100.0f;
+    constexpr float kReloadTiltStart = 0.1f;
+    constexpr float kReloadTiltEnd = 0.3f;
+    constexpr float kReloadReturnStart = 0.8f;
+    constexpr float kMagazineOutStart = 0.3f;
+    constexpr float kMagazineOutEnd = 0.45f;
+    constexpr float kMagazineInStart = 0.65f;
+    constexpr float kMagazineInEnd = 0.80f;
+    constexpr float kMagazineTravelDistance = 60.0f;
+    constexpr float kReloadForwardDistance = 12.0f;
+    constexpr float kReloadLeftDistance = 8.0f;
+    constexpr float kReloadUpDistance = 16.0f;
+    constexpr float kReloadPitch = 18.0f;
+    constexpr float kReloadRoll = -40.0f;
+    const FName kMagazineBoneName(TEXT("Mag"));
 }
 
 AM1911WeaponView::AM1911WeaponView()
@@ -51,6 +66,16 @@ AM1911WeaponView::AM1911WeaponView()
     gunMesh_->SetCastShadow(false);
     gunMesh_->SetFirstPersonPrimitiveType(EFirstPersonPrimitiveType::FirstPerson);
     gunMesh_->SetComponentTickEnabled(false);
+
+    reloadMesh_ = CreateDefaultSubobject<UPoseableMeshComponent>(TEXT("ReloadMesh"));
+    reloadMesh_->SetupAttachment(gunMesh_);
+    reloadMesh_->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+    reloadMesh_->SetGenerateOverlapEvents(false);
+    reloadMesh_->SetOnlyOwnerSee(true);
+    reloadMesh_->SetCastShadow(false);
+    reloadMesh_->SetFirstPersonPrimitiveType(EFirstPersonPrimitiveType::FirstPerson);
+    reloadMesh_->SetComponentTickEnabled(false);
+    reloadMesh_->SetVisibility(false);
 
     muzzleFlash_ = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("MuzzleFlash"));
     muzzleFlash_->SetupAttachment(viewRoot_);
@@ -82,6 +107,7 @@ void AM1911WeaponView::OnConstruction(const FTransform& transform)
 void AM1911WeaponView::ApplyVisualAssets()
 {
     gunMesh_->SetSkeletalMeshAsset(gunMeshAsset_);
+    reloadMesh_->SetSkinnedAssetAndUpdate(gunMeshAsset_);
     muzzleFlash_->SetStaticMesh(muzzleFlashMeshAsset_);
     muzzleFlash_->SetMaterial(0, muzzleFlashMaterial_);
 }
@@ -125,9 +151,49 @@ void AM1911WeaponView::UpdateView(float deltaTime, FVector cameraLocation, FRota
     viewLocation.X -= recoilAmount * kRecoilBackDistance;
     viewRotation = FRotator(recoilPitch_ * recoilAmount, 0.0f, 0.0f).Quaternion() * viewRotation;
 
+    ApplyReloadPose(viewLocation, viewRotation);
+
     const FTransform cameraTransform(cameraRotation, cameraLocation);
     const FTransform relativeTransform(viewRotation, viewLocation);
     SetActorTransform(relativeTransform * cameraTransform);
+}
+
+void AM1911WeaponView::SetReloadState(bool isReloading, float progress)
+{
+    if (isReloading && !isReloading_)
+    {
+        reloadMesh_->CopyPoseFromSkeletalComponent(gunMesh_);
+        magazineRestTransform_ = reloadMesh_->GetBoneTransformByName(kMagazineBoneName, EBoneSpaces::ComponentSpace);
+        for (int32 materialIndex = 0; materialIndex < gunMesh_->GetNumMaterials(); ++materialIndex)
+        {
+            reloadMesh_->SetMaterial(materialIndex, gunMesh_->GetMaterial(materialIndex));
+        }
+    }
+
+    isReloading_ = isReloading;
+    reloadProgress_ = FMath::Clamp(progress, 0.0f, 1.0f);
+    gunMesh_->SetVisibility(!isReloading_);
+    reloadMesh_->SetVisibility(isReloading_);
+}
+
+void AM1911WeaponView::ApplyReloadPose(FVector& viewLocation, FQuat& viewRotation)
+{
+    if (!isReloading_)
+    {
+        return;
+    }
+
+    const float tiltWeight = FMath::SmoothStep(kReloadTiltStart, kReloadTiltEnd, reloadProgress_)
+        * (1.0f - FMath::SmoothStep(kReloadReturnStart, 1.0f, reloadProgress_));
+    viewLocation += FVector(kReloadForwardDistance, -kReloadLeftDistance, kReloadUpDistance) * tiltWeight;
+    viewRotation = FRotator(kReloadPitch * tiltWeight, 0.0f, kReloadRoll * tiltWeight).Quaternion() * viewRotation;
+
+    const float magazineWeight = FMath::SmoothStep(kMagazineOutStart, kMagazineOutEnd, reloadProgress_)
+        * (1.0f - FMath::SmoothStep(kMagazineInStart, kMagazineInEnd, reloadProgress_));
+    FTransform magazineTransform = magazineRestTransform_;
+    magazineTransform.AddToTranslation(FVector::DownVector * kMagazineTravelDistance * magazineWeight);
+    reloadMesh_->SetBoneTransformByName(kMagazineBoneName, magazineTransform, EBoneSpaces::ComponentSpace);
+    reloadMesh_->RefreshBoneTransforms();
 }
 
 void AM1911WeaponView::PlayFireFeedback()

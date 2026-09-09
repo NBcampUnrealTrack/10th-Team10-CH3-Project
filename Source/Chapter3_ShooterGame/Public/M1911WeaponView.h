@@ -6,13 +6,14 @@
 
 class USceneComponent;
 class USkeletalMeshComponent;
+class UPoseableMeshComponent;
 class UStaticMeshComponent;
 class UPointLightComponent;
 class USkeletalMesh;
 class UStaticMesh;
 class UMaterialInterface;
 
-// 카메라 앞의 총 표시와 조준/반동만 담당한다. 명중 판정은 컨트롤러가 담당한다.
+// 카메라 앞의 총 표시와 조준/반동/장전 모션을 담당한다. 명중 판정과 탄약은 컨트롤러가 담당한다.
 UCLASS()
 class CHAPTER3_SHOOTERGAME_API AM1911WeaponView : public AActor
 {
@@ -27,6 +28,8 @@ public:
 
     UFUNCTION(BlueprintCallable, Category = "Weapon View")
     void PlayFireFeedback();
+
+    void SetReloadState(bool isReloading, float progress);
 
     UFUNCTION(BlueprintPure, Category = "Weapon View")
     FTransform GetAimTransform() const;
@@ -74,12 +77,20 @@ protected:
     UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = "Weapon View|Recoil", meta = (ClampMin = "0.0", Units = "deg"))
     float recoilPitch_ = 0.0f;
 
+	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = "Weapon View|Recoil", meta = (ClampMin = "0.0", Units = "cm"))
+    float kMagazineTravelDistance = 60.0f;
+
 private:
     void ApplyVisualAssets();
     void UpdateFireFeedback(float deltaTime);
+    void ApplyReloadPose(FVector& viewLocation, FQuat& viewRotation);
 
     UPROPERTY(VisibleAnywhere, Category = "Weapon View")
     TObjectPtr<USceneComponent> viewRoot_ = nullptr;
+
+    // 기존 사격 메시와 Blueprint 설정을 유지하고 장전 중에만 뼈대를 직접 움직인다.
+    UPROPERTY(VisibleAnywhere, Category = "Weapon View|Reload")
+    TObjectPtr<UPoseableMeshComponent> reloadMesh_ = nullptr;
 
     UPROPERTY(VisibleAnywhere, Category = "Weapon View")
     TObjectPtr<UStaticMeshComponent> muzzleFlash_ = nullptr;
@@ -90,4 +101,7 @@ private:
     float aimAlpha_ = 0.0f;
     float shotElapsed_ = 0.0f;
     float recoilWeight_ = 0.0f;
+    float reloadProgress_ = 0.0f;
+    bool isReloading_ = false;
+    FTransform magazineRestTransform_ = FTransform::Identity;
 };

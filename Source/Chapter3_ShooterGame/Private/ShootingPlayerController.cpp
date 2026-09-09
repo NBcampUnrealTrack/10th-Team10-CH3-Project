@@ -27,6 +27,8 @@ namespace
     constexpr float kDefaultFireRange = 10000.0f;
     constexpr float kDefaultDamage = 20.0f;
     constexpr float kDefaultFireInterval = 0.2f;
+    constexpr float kDefaultReloadDuration = 1.8f;
+    constexpr float kMinimumReloadDuration = 0.2f;
     constexpr int32 kFireMappingPriority = 1;
     constexpr float kDebugDuration = 1.0f;
     constexpr float kDebugLineThickness = 1.0f;
@@ -47,10 +49,19 @@ AShootingPlayerController::AShootingPlayerController()
     fireRange_ = kDefaultFireRange;
     damage_ = kDefaultDamage;
     fireInterval_ = kDefaultFireInterval;
+    reloadDuration_ = kDefaultReloadDuration;
     coinThrowSpeed_ = kDefaultCoinThrowSpeed;
     coinUpwardSpeed_ = kDefaultCoinUpwardSpeed;
     coinThrowInterval_ = kDefaultCoinThrowInterval;
     slowMotionSkill_ = CreateDefaultSubobject<USlowMotionSkillComponent>(TEXT("SlowMotionSkill"));
+}
+
+void AShootingPlayerController::BeginPlay()
+{
+    // Blueprint의 설정값으로 초기화한 뒤 Blueprint BeginPlay를 실행한다.
+    magazineCapacity_ = GetMagazineCapacity();
+    currentAmmo_ = magazineCapacity_;
+    Super::BeginPlay();
 }
 
 bool AShootingPlayerController::TryActivateSlowMotion()
@@ -183,10 +194,25 @@ void AShootingPlayerController::ThrowCoin()
 
 void AShootingPlayerController::Fire()
 {
+
+
     UWorld* world = GetWorld();
     APawn* controlledPawn = GetPawn();
-    if (!world || !controlledPawn || !IsLocalController() || world->IsPaused() || fireRange_ <= 0.0f)
+    if (GetWorldTimerManager().IsTimerActive(reloadDelayTimer_))
     {
+        return;
+    }
+
+    
+    if (!world || !controlledPawn || !IsLocalController() || world->IsPaused()
+        || fireRange_ <= 0.0f || reloading_)
+    {
+        return;
+    }
+
+    if (currentAmmo_ <= 0)
+    {
+		GetWorldTimerManager().SetTimer(reloadTimer_, this, &AShootingPlayerController::StartReload, reloadDelay_, false);
         return;
     }
 
@@ -197,6 +223,7 @@ void AShootingPlayerController::Fire()
     }
 
     nextFireTime_ = currentTime + FMath::Max(0.0f, fireInterval_);
+    --currentAmmo_;
 
     if (IsValid(weaponView_))
     {
@@ -233,6 +260,49 @@ void AShootingPlayerController::Fire()
     {
         DrawShotDebug(start, end, hitResult);
     }
+
+    if (currentAmmo_ == 0)
+    {
+        GetWorldTimerManager().SetTimer(reloadTimer_, this, &AShootingPlayerController::StartReload, reloadDelay_, false);
+    }
+}
+
+void AShootingPlayerController::StartReload()
+{
+    if (reloading_ || currentAmmo_ > 0 || !GetWorld())
+    {
+        return;
+    }
+
+    const float duration = FMath::IsFinite(reloadDuration_)
+        ? FMath::Max(kMinimumReloadDuration, reloadDuration_) : kDefaultReloadDuration;
+    reloading_ = true;
+    GetWorldTimerManager().SetTimer(reloadTimer_, this,
+        &AShootingPlayerController::FinishReload, duration, false);
+}
+
+void AShootingPlayerController::FinishReload()
+{
+    // 예비 탄약 제한은 추후 추가한다. 지금은 장전이 끝날 때마다 탄창을 채운다.
+    currentAmmo_ = GetMagazineCapacity();
+    reloading_ = false;
+    if (IsValid(weaponView_))
+    {
+        weaponView_->SetReloadState(false, 0.0f);
+    }
+}
+
+float AShootingPlayerController::GetReloadProgress() const
+{
+    if (!reloading_ || !GetWorld())
+    {
+        return 0.0f;
+    }
+
+    const FTimerManager& timerManager = GetWorld()->GetTimerManager();
+    const float duration = timerManager.GetTimerRate(reloadTimer_);
+    return duration > 0.0f
+        ? FMath::Clamp(timerManager.GetTimerElapsed(reloadTimer_) / duration, 0.0f, 1.0f) : 0.0f;
 }
 
 void AShootingPlayerController::ApplyShotDamage(const FHitResult& hitResult, const FVector& shotDirection)
@@ -273,6 +343,9 @@ void AShootingPlayerController::DrawShotDebug(const FVector& start, const FVecto
 
 void AShootingPlayerController::EndPlay(const EEndPlayReason::Type endPlayReason)
 {
+    GetWorldTimerManager().ClearTimer(reloadTimer_);
+    GetWorldTimerManager().ClearTimer(reloadDelayTimer_);
+    reloading_ = false;
     if (IsValid(weaponView_))
     {
         weaponView_->Destroy();
@@ -344,7 +417,8 @@ void AShootingPlayerController::UpdateCameraManager(float deltaSeconds)
         viewInfo.FirstPersonFOV = viewInfo.FOV;
         viewInfo.FirstPersonScale = kFirstPersonScale;
         PlayerCameraManager->SetCameraCachePOV(viewInfo);
-        weaponView_->UpdateView(deltaSeconds, viewInfo.Location, viewInfo.Rotation, aimHeld_);
+        weaponView_->SetReloadState(reloading_, GetReloadProgress());
+        weaponView_->UpdateView(deltaSeconds, viewInfo.Location, viewInfo.Rotation, aimHeld_ && !reloading_);
     }
 }
 
