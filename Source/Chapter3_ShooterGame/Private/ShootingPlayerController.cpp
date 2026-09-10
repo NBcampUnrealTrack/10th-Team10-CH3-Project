@@ -6,6 +6,8 @@
 #include "M1911WeaponView.h"
 #include "DistractionCoin.h"
 #include "SlowMotionSkillComponent.h"
+#include "AssassinationTargetComponent.h"
+#include "EngineUtils.h"
 #include "Camera/PlayerCameraManager.h"
 
 #include "DrawDebugHelpers.h"
@@ -115,6 +117,26 @@ void AShootingPlayerController::SetupInputComponent()
 
 void AShootingPlayerController::BindGameplayInput(UEnhancedInputComponent* enhancedInput)
 {
+    if (reloadAction_)
+    {
+        enhancedInput->BindAction(reloadAction_, ETriggerEvent::Started, this,
+            &AShootingPlayerController::StartReload);
+    }
+    else
+    {
+        UE_LOG(LogShooting, Warning, TEXT("컨트롤러 Blueprint에 장전 Input Action을 지정하세요."));
+    }
+
+    if (assassinationAction_)
+    {
+        enhancedInput->BindAction(assassinationAction_, ETriggerEvent::Started, this,
+            &AShootingPlayerController::HandleAssassinationInput);
+    }
+    else
+    {
+        UE_LOG(LogShooting, Warning, TEXT("컨트롤러 Blueprint에 암살 Input Action을 지정하세요."));
+    }
+
     if (fireAction_)
     {
         enhancedInput->BindAction(fireAction_, ETriggerEvent::Started, this, &AShootingPlayerController::Fire);
@@ -131,6 +153,52 @@ void AShootingPlayerController::BindGameplayInput(UEnhancedInputComponent* enhan
     {
         enhancedInput->BindAction(throwCoinAction_, ETriggerEvent::Started, this, &AShootingPlayerController::ThrowCoin);
     }
+}
+
+UAssassinationTargetComponent* AShootingPlayerController::FindAssassinationTarget() const
+{
+    const APawn* controlledPawn = GetPawn();
+    if (!IsValid(controlledPawn) || !GetWorld() || GetWorld()->IsPaused())
+    {
+        return nullptr;
+    }
+
+    UAssassinationTargetComponent* closestTarget = nullptr;
+    double closestDistanceSquared = TNumericLimits<double>::Max();
+    for (TActorIterator<AActor> actorIterator(GetWorld()); actorIterator; ++actorIterator)
+    {
+        TInlineComponentArray<UAssassinationTargetComponent*> targets(*actorIterator);
+        for (UAssassinationTargetComponent* target : targets)
+        {
+            if (!IsValid(target) || !target->CanBeAssassinatedBy(controlledPawn))
+            {
+                continue;
+            }
+            const double distanceSquared = FVector::DistSquared(controlledPawn->GetActorLocation(),
+                target->GetComponentLocation());
+            if (distanceSquared < closestDistanceSquared)
+            {
+                closestDistanceSquared = distanceSquared;
+                closestTarget = target;
+            }
+        }
+    }
+    return closestTarget;
+}
+
+bool AShootingPlayerController::TryAssassinate()
+{
+    if (!IsLocalController() || !HasAuthority())
+    {
+        return false;
+    }
+    UAssassinationTargetComponent* target = FindAssassinationTarget();
+    return IsValid(target) && target->TryAssassinate(GetPawn());
+}
+
+void AShootingPlayerController::HandleAssassinationInput()
+{
+    TryAssassinate();
 }
 
 void AShootingPlayerController::ThrowCoin()
@@ -212,7 +280,7 @@ void AShootingPlayerController::Fire()
 
     if (currentAmmo_ <= 0)
     {
-		GetWorldTimerManager().SetTimer(reloadTimer_, this, &AShootingPlayerController::StartReload, reloadDelay_, false);
+        QueueAutomaticReload();
         return;
     }
 
@@ -263,17 +331,37 @@ void AShootingPlayerController::Fire()
 
     if (currentAmmo_ == 0)
     {
-        GetWorldTimerManager().SetTimer(reloadTimer_, this, &AShootingPlayerController::StartReload, reloadDelay_, false);
+        QueueAutomaticReload();
     }
 }
 
-void AShootingPlayerController::StartReload()
+void AShootingPlayerController::QueueAutomaticReload()
 {
-    if (reloading_ || currentAmmo_ > 0 || !GetWorld())
+    if (!GetWorld() || reloading_ || GetWorldTimerManager().IsTimerActive(reloadDelayTimer_))
     {
         return;
     }
 
+    const float delay = FMath::IsFinite(reloadDelay_) ? FMath::Max(0.0f, reloadDelay_) : 0.0f;
+    if (delay <= 0.0f)
+    {
+        StartReload();
+        return;
+    }
+    GetWorldTimerManager().SetTimer(reloadDelayTimer_, this,
+        &AShootingPlayerController::StartReload, delay, false);
+}
+
+void AShootingPlayerController::StartReload()
+{
+    UWorld* world = GetWorld();
+    if (!world || world->IsPaused() || !IsLocalController() || !IsValid(GetPawn())
+        || reloading_ || currentAmmo_ >= GetMagazineCapacity())
+    {
+        return;
+    }
+
+    GetWorldTimerManager().ClearTimer(reloadDelayTimer_);
     const float duration = FMath::IsFinite(reloadDuration_)
         ? FMath::Max(kMinimumReloadDuration, reloadDuration_) : kDefaultReloadDuration;
     reloading_ = true;

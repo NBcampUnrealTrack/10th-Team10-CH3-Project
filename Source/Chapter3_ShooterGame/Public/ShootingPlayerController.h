@@ -14,6 +14,7 @@ class UInputMappingContext;
 class AM1911WeaponView;
 class ADistractionCoin;
 class USlowMotionSkillComponent;
+class UAssassinationTargetComponent;
 
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnCoinThrown, ADistractionCoin*, coin);
 
@@ -28,6 +29,9 @@ public:
 
     UFUNCTION(BlueprintCallable, Category = "Shooting")
     void Fire();
+
+    UFUNCTION(BlueprintCallable, Category = "Shooting|Magazine")
+    void StartReload();
 
     UFUNCTION(BlueprintPure, Category = "Shooting|Magazine")
     int32 GetCurrentAmmo() const
@@ -61,6 +65,12 @@ public:
 
     UFUNCTION(BlueprintCallable, Category = "Skill|Slow Motion")
     bool TryActivateSlowMotion();
+
+    UFUNCTION(BlueprintCallable, Category = "BackAttack")
+    bool TryAssassinate();
+
+    UFUNCTION(BlueprintPure, Category = "BackAttack")
+    UAssassinationTargetComponent* FindAssassinationTarget() const;
 
     // 생성 직후 호출된다. 여기서 coin의 onCoinLanded_에 바인딩할 수 있다.
     UPROPERTY(BlueprintAssignable, Category = "Coin")
@@ -117,10 +127,16 @@ protected:
     TObjectPtr<UInputAction> fireAction_ = nullptr;
 
     UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Input")
+    TObjectPtr<UInputAction> reloadAction_ = nullptr;
+
+    UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Input")
     TObjectPtr<UInputAction> aimAction_ = nullptr;
 
     UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Input")
     TObjectPtr<UInputAction> throwCoinAction_ = nullptr;
+
+    UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Input")
+    TObjectPtr<UInputAction> assassinationAction_ = nullptr;
 
     UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Input")
     TObjectPtr<UInputMappingContext> inputMappingContext_ = nullptr;
@@ -131,7 +147,8 @@ protected:
     FTimerHandle reloadDelayTimer_ = {};
 
 private:
-    void StartReload();
+    void HandleAssassinationInput();
+    void QueueAutomaticReload();
     void FinishReload();
     void BindGameplayInput(UEnhancedInputComponent* enhancedInput);
     void ApplyShotDamage(const FHitResult& hitResult, const FVector& shotDirection);

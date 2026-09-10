@@ -4,6 +4,8 @@
 #include "ShootingTarget.h"
 #include "TrainingDummyTarget.generated.h"
 
+class UAssassinationTargetComponent;
+
 UCLASS()
 class CHAPTER3_SHOOTERGAME_API ATrainingDummyTarget : public AShootingTarget
 {
@@ -19,6 +21,9 @@ protected:
 
     UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Target|Dummy")
     TObjectPtr<UStaticMeshComponent> dummyMesh_ = nullptr;
+
+    UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "BackAttack")
+    TObjectPtr<UAssassinationTargetComponent> assassinationTarget_ = nullptr;
 
     UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Target|Dummy", meta = (ClampMin = "1.0", Units = "cm"))
     float dummyHeight_ = 0.0f;
