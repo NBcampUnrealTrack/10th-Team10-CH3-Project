@@ -12,6 +12,7 @@ class UPointLightComponent;
 class USkeletalMesh;
 class UStaticMesh;
 class UMaterialInterface;
+class UWeaponAttachmentComponent;
 
 // 카메라 앞의 총 표시와 조준/반동/장전 모션을 담당한다. 명중 판정과 탄약은 컨트롤러가 담당한다.
 UCLASS()
@@ -42,6 +43,9 @@ public:
 
     UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Weapon View")
     TObjectPtr<USkeletalMeshComponent> gunMesh_ = nullptr;
+
+    UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Weapon View|Attachments")
+    TObjectPtr<UWeaponAttachmentComponent> attachmentComponent_ = nullptr;
 
 protected:
     virtual void BeginPlay() override;

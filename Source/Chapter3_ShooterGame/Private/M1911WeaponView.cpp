@@ -1,4 +1,5 @@
 #include "M1911WeaponView.h"
+#include "WeaponAttachmentComponent.h"
 
 #include "Components/PointLightComponent.h"
 #include "Components/PoseableMeshComponent.h"
@@ -67,6 +68,8 @@ AM1911WeaponView::AM1911WeaponView()
     gunMesh_->SetFirstPersonPrimitiveType(EFirstPersonPrimitiveType::FirstPerson);
     gunMesh_->SetComponentTickEnabled(false);
 
+    attachmentComponent_ = CreateDefaultSubobject<UWeaponAttachmentComponent>(TEXT("WeaponAttachments"));
+
     reloadMesh_ = CreateDefaultSubobject<UPoseableMeshComponent>(TEXT("ReloadMesh"));
     reloadMesh_->SetupAttachment(gunMesh_);
     reloadMesh_->SetCollisionEnabled(ECollisionEnabled::NoCollision);
@@ -102,6 +105,8 @@ void AM1911WeaponView::OnConstruction(const FTransform& transform)
 {
     Super::OnConstruction(transform);
     ApplyVisualAssets();
+    attachmentComponent_->SetAttachmentTarget(gunMesh_);
+    attachmentComponent_->RefreshAttachmentPreview();
 }
 
 void AM1911WeaponView::ApplyVisualAssets()
@@ -114,8 +119,9 @@ void AM1911WeaponView::ApplyVisualAssets()
 
 void AM1911WeaponView::BeginPlay()
 {
-    Super::BeginPlay();
     ApplyVisualAssets();
+    attachmentComponent_->SetAttachmentTarget(gunMesh_);
+    Super::BeginPlay();
 
     UMaterialInstanceDynamic* flashMaterial = muzzleFlash_->CreateDynamicMaterialInstance(0);
     if (flashMaterial)
@@ -160,6 +166,7 @@ void AM1911WeaponView::UpdateView(float deltaTime, FVector cameraLocation, FRota
 
 void AM1911WeaponView::SetReloadState(bool isReloading, float progress)
 {
+    const bool reloadStateChanged = isReloading != isReloading_;
     if (isReloading && !isReloading_)
     {
         reloadMesh_->CopyPoseFromSkeletalComponent(gunMesh_);
@@ -174,6 +181,13 @@ void AM1911WeaponView::SetReloadState(bool isReloading, float progress)
     reloadProgress_ = FMath::Clamp(progress, 0.0f, 1.0f);
     gunMesh_->SetVisibility(!isReloading_);
     reloadMesh_->SetVisibility(isReloading_);
+    if (reloadStateChanged)
+    {
+        // 탄창 본에 달린 부착물도 장전용 메시의 본 이동을 따라간다.
+        attachmentComponent_->SetAttachmentTarget(isReloading_
+            ? static_cast<USceneComponent*>(reloadMesh_)
+            : static_cast<USceneComponent*>(gunMesh_));
+    }
 }
 
 void AM1911WeaponView::ApplyReloadPose(FVector& viewLocation, FQuat& viewRotation)
