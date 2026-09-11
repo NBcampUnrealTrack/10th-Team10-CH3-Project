@@ -12,7 +12,7 @@
 
 namespace
 {
-    constexpr float kTestStep = 0.01f;
+    constexpr float kSlowMotionTestStep = 0.01f;
     constexpr float kTestDuration = 0.3f;
     constexpr float kTestCooldown = 0.4f;
     constexpr float kTestBaseTimeDilation = 0.75f;
@@ -48,7 +48,7 @@ namespace
             for (int32 frameIndex = 0; frameIndex < frameCount; ++frameIndex)
             {
                 ++GFrameCounter;
-                world_->Tick(LEVELTICK_All, kTestStep);
+                world_->Tick(LEVELTICK_All, kSlowMotionTestStep);
             }
         }
 
