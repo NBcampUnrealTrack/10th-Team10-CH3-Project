@@ -27,6 +27,11 @@ AEnemyAIController::AEnemyAIController()
 
 	AIPerception->ConfigureSense(*SightConfig);
 	AIPerception->SetDominantSense(SightConfig->GetSenseImplementation());
+
+	fireRange_ = 10000.0f;
+	damage_ = 20.0f;
+	fireInterval_ = 0.2f;
+	reloadDuration_ = 0.0f;
 }
 
 float AEnemyAIController::GetSightRadius(void) const
@@ -120,4 +125,123 @@ void AEnemyAIController::StopEnemy(void)
 void AEnemyAIController::ClearControllerTimer(void)
 {
 	GetWorldTimerManager().ClearTimer(enemyBehaviorTimer_);
+	GetWorldTimerManager().ClearTimer(reloadDelayTimer_);
+	GetWorldTimerManager().ClearTimer(reloadTimer_);
+}
+
+void AEnemyAIController::Fire(void)
+{
+	UWorld* world = GetWorld();
+	if (GetWorldTimerManager().IsTimerActive(reloadDelayTimer_))
+	{
+		return;
+	}
+
+
+	if (!world || !myPawn_ || !IsLocalController() || world->IsPaused()
+		|| fireRange_ <= 0.0f || reloading_)
+	{
+		return;
+	}
+
+	if (currentAmmo_ <= 0)
+	{
+		QueueAutomaticReload();
+		return;
+	}
+
+	const double currentTime = world->GetTimeSeconds();
+	if (currentTime < nextFireTime_)
+	{
+		return;
+	}
+
+	nextFireTime_ = currentTime + FMath::Max(0.0f, fireInterval_);
+	--currentAmmo_;
+
+	// 카메라 위치에서 조준 방향으로 검사한다. 실제 투사체를 생성하지 않는 방식이다.
+	FVector start = FVector::ZeroVector;
+	FRotator viewRotation = FRotator::ZeroRotator;
+	GetPlayerViewPoint(start, viewRotation);
+
+	const FVector shotDirection = viewRotation.Vector();
+	const FVector end = start + shotDirection * fireRange_;
+
+	FCollisionQueryParams queryParams(SCENE_QUERY_STAT(PlayerShot), true);
+	queryParams.AddIgnoredActor(this);
+	queryParams.AddIgnoredActor(myPawn_);
+
+	// 캐릭터에 부착된 총 등의 액터도 자기 자신에 맞지 않도록 제외한다.
+	TArray<AActor*> attachedActors = {};
+	myPawn_->GetAttachedActors(attachedActors, true, true);
+	queryParams.AddIgnoredActors(attachedActors);
+
+	FHitResult hitResult = {};
+	world->LineTraceSingleByChannel(hitResult, start, end, ECC_Visibility, queryParams);
+
+	if (hitResult.bBlockingHit)
+	{
+		ApplyShotDamage(hitResult, shotDirection);
+	}
+
+	if (currentAmmo_ == 0)
+	{
+		QueueAutomaticReload();
+	}
+}
+void AEnemyAIController::QueueAutomaticReload(void)
+{
+	if (!GetWorld() || reloading_ || GetWorldTimerManager().IsTimerActive(reloadDelayTimer_))
+	{
+		return;
+	}
+
+	const float delay = FMath::IsFinite(reloadDelay_) ? FMath::Max(0.0f, reloadDelay_) : 0.0f;
+	if (delay <= 0.0f)
+	{
+		StartReload();
+		return;
+	}
+	GetWorldTimerManager().SetTimer(reloadDelayTimer_, this,
+		&AEnemyAIController::StartReload, delay, false);
+}
+void AEnemyAIController::StartReload(void)
+{
+	UWorld* world = GetWorld();
+	if (!world || world->IsPaused() || !IsLocalController() || !IsValid(GetPawn())
+		|| reloading_ || currentAmmo_ >= magazineCapacity_)
+	{
+		return;
+	}
+
+	GetWorldTimerManager().ClearTimer(reloadDelayTimer_);
+	const float duration = FMath::IsFinite(reloadDuration_)
+		? FMath::Max(kMinimumReloadDuration, reloadDuration_) : kDefaultReloadDuration;
+	reloading_ = true;
+	GetWorldTimerManager().SetTimer(reloadTimer_, this,
+		&AEnemyAIController::FinishReload, duration, false);
+}
+void AEnemyAIController::FinishReload(void)
+{
+	// 예비 탄약 제한은 추후 추가한다. 지금은 장전이 끝날 때마다 탄창을 채운다.
+	currentAmmo_ = magazineCapacity_;
+	reloading_ = false;
+}
+
+void AEnemyAIController::ApplyShotDamage(const FHitResult& hitResult, const FVector& shotDirection)
+{
+	AActor* hitActor = hitResult.GetActor();
+	if (!hitActor)
+	{
+		return;
+	}
+
+	UGameplayStatics::ApplyPointDamage(
+		hitActor,
+		FMath::Max(0.0f, damage_),
+		shotDirection,
+		hitResult,
+		this,
+		GetPawn(),
+		UDamageType::StaticClass());
 }

@@ -8,8 +8,7 @@ UENUM(BlueprintType)
 enum class EEnemyType : uint8
 {
 	bouncer UMETA(DisplayName = "Bouncer"),
-	bodyguard UMETA(DisplayName = "Bodyguard"),
-	boss UMETA(DisplayName = "Boss")
+	bodyguard UMETA(DisplayName = "Bodyguard")
 };
 UENUM(BlueprintType)
 enum class EAlertType : uint8
@@ -45,17 +44,19 @@ public:
 
 	UPROPERTY(EditAnywhere)
 	EEnemyType enemyType_;
-	UPROPERTY(EditAnywhere)
-	TMap<EEnemyType, USkeletalMesh*> enemyMeshes_;
+	//UPROPERTY(EditAnywhere)
+	//TMap<EEnemyType, USkeletalMesh*> enemyMeshes_;
 
 protected:
 	virtual void BeginPlay() override;
-
 	virtual float TakeDamage(float DamageAmount, struct FDamageEvent const& DamageEvent, AController* EventInstigator, AActor* DamageCauser) override;
+
+	void StartFire(void);
 	void OnDeath(void);
 
 private:
 	FTimerHandle EnemyStateUpdateTimer_;
+	FTimerHandle EnemyAttackIntervalTimer_;
 
 	EAlertType alertType_ = EAlertType::patrol;
 	float sightRadius_ = 0.0f;
