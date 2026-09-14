@@ -32,6 +32,9 @@ public:
 
     void SetReloadState(bool isReloading, float progress);
 
+    // 총과 부착물을 함께 숨긴다. 비활성화할 때 일시적인 발사/장전 효과를 정리한다.
+    void SetWeaponEquipped(bool equipped);
+
     UFUNCTION(BlueprintPure, Category = "Weapon View")
     FTransform GetAimTransform() const;
 

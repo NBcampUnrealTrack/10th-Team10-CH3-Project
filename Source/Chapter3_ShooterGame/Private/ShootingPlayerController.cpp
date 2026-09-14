@@ -63,6 +63,7 @@ void AShootingPlayerController::BeginPlay()
     // Blueprint의 설정값으로 초기화한 뒤 Blueprint BeginPlay를 실행한다.
     magazineCapacity_ = GetMagazineCapacity();
     currentAmmo_ = magazineCapacity_;
+    InitializeWeaponInventory();
     Super::BeginPlay();
 }
 
@@ -153,6 +154,126 @@ void AShootingPlayerController::BindGameplayInput(UEnhancedInputComponent* enhan
     {
         enhancedInput->BindAction(throwCoinAction_, ETriggerEvent::Started, this, &AShootingPlayerController::ThrowCoin);
     }
+}
+
+void AShootingPlayerController::InitializeWeaponInventory()
+{
+    if (weaponInventoryInitialized_)
+    {
+        return;
+    }
+    weaponInventoryInitialized_ = true;
+    TArray<TSubclassOf<AM1911WeaponView>> classes = weaponViewClasses_;
+    if (classes.IsEmpty() && weaponViewClass_)
+    {
+        classes.Add(weaponViewClass_);
+    }
+    for (TSubclassOf<AM1911WeaponView> weaponClass : classes)
+    {
+        if (!weaponClass || weaponClass->HasAnyClassFlags(CLASS_Abstract | CLASS_Deprecated | CLASS_NewerVersionExists))
+        {
+            continue;
+        }
+        FWeaponViewSlotState slot = {};
+        slot.weaponClass_ = weaponClass;
+        slot.ammo_ = GetMagazineCapacity();
+        weaponSlots_.Add(slot);
+        if (equippedWeaponIndex_ == INDEX_NONE && weaponClass == weaponViewClass_)
+        {
+            equippedWeaponIndex_ = weaponSlots_.Num() - 1;
+        }
+    }
+    if (equippedWeaponIndex_ == INDEX_NONE && !weaponSlots_.IsEmpty())
+    {
+        equippedWeaponIndex_ = 0;
+    }
+}
+
+void AShootingPlayerController::NextWeapon()
+{
+    CycleWeapon(1);
+}
+
+void AShootingPlayerController::PreviousWeapon()
+{
+    CycleWeapon(-1);
+}
+
+void AShootingPlayerController::CycleWeapon(int32 direction)
+{
+    InitializeWeaponInventory();
+    const int32 count = weaponSlots_.Num();
+    if (count < 2)
+    {
+        return;
+    }
+    // 생성할 수 없는 슬롯은 건너뛰되 현재 총은 그대로 유지한다.
+    for (int32 step = 1; step < count; ++step)
+    {
+        const int32 nextIndex = (equippedWeaponIndex_ + direction * step + count) % count;
+        if (EquipWeaponAtIndex(nextIndex))
+        {
+            return;
+        }
+    }
+}
+
+bool AShootingPlayerController::EquipWeaponAtIndex(int32 weaponIndex)
+{
+    UWorld* world = GetWorld();
+    APawn* controlledPawn = GetPawn();
+    if (switchingWeapon_ || !world || world->IsPaused() || !IsLocalController() || !IsValid(controlledPawn))
+    {
+        return false;
+    }
+    InitializeWeaponInventory();
+    if (!weaponSlots_.IsValidIndex(weaponIndex)
+        || (weaponIndex == equippedWeaponIndex_ && IsValid(weaponView_)))
+    {
+        return false;
+    }
+    TGuardValue<bool> switchGuard(switchingWeapon_, true);
+    FWeaponViewSlotState& nextSlot = weaponSlots_[weaponIndex];
+    if (!IsValid(nextSlot.instance_))
+    {
+        FActorSpawnParameters spawnParams = {};
+        spawnParams.Owner = controlledPawn;
+        spawnParams.Instigator = controlledPawn;
+        spawnParams.ObjectFlags |= RF_Transient;
+        spawnParams.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
+        const FTransform spawnTransform = IsValid(weaponView_)
+            ? weaponView_->GetActorTransform() : controlledPawn->GetActorTransform();
+        nextSlot.instance_ = world->SpawnActor<AM1911WeaponView>(nextSlot.weaponClass_, spawnTransform, spawnParams);
+        if (!IsValid(nextSlot.instance_))
+        {
+            return false;
+        }
+    }
+
+    if (weaponSlots_.IsValidIndex(equippedWeaponIndex_))
+    {
+        weaponSlots_[equippedWeaponIndex_].ammo_ = currentAmmo_;
+    }
+    // 이전 총의 장전 타이머가 새 총의 탄약을 채우지 않게 취소한다.
+    GetWorldTimerManager().ClearTimer(reloadTimer_);
+    GetWorldTimerManager().ClearTimer(reloadDelayTimer_);
+    reloading_ = false;
+    if (IsValid(weaponView_))
+    {
+        weaponView_->SetWeaponEquipped(false);
+    }
+    equippedWeaponIndex_ = weaponIndex;
+    weaponView_ = nextSlot.instance_;
+    currentAmmo_ = FMath::Clamp(nextSlot.ammo_, 0, GetMagazineCapacity());
+    weaponView_->SetOwner(controlledPawn);
+    weaponView_->SetInstigator(controlledPawn);
+    weaponView_->SetWeaponEquipped(true);
+    if (PlayerCameraManager)
+    {
+        const FMinimalViewInfo& viewInfo = PlayerCameraManager->GetCameraCacheView();
+        weaponView_->UpdateView(0.0f, viewInfo.Location, viewInfo.Rotation, aimHeld_);
+    }
+    return true;
 }
 
 UAssassinationTargetComponent* AShootingPlayerController::FindAssassinationTarget() const
@@ -434,11 +555,15 @@ void AShootingPlayerController::EndPlay(const EEndPlayReason::Type endPlayReason
     GetWorldTimerManager().ClearTimer(reloadTimer_);
     GetWorldTimerManager().ClearTimer(reloadDelayTimer_);
     reloading_ = false;
-    if (IsValid(weaponView_))
+    for (FWeaponViewSlotState& slot : weaponSlots_)
     {
-        weaponView_->Destroy();
-        weaponView_ = nullptr;
+        if (IsValid(slot.instance_))
+        {
+            slot.instance_->Destroy();
+        }
     }
+    weaponSlots_.Empty();
+    weaponView_ = nullptr;
     if (UEnhancedInputLocalPlayerSubsystem* subsystem = inputSubsystem_.Get())
     {
         subsystem->RemoveMappingContext(inputMappingContext_);
@@ -479,25 +604,21 @@ void AShootingPlayerController::UpdateCameraManager(float deltaSeconds)
         StopAiming();
         if (IsValid(weaponView_))
         {
-            weaponView_->SetActorHiddenInGame(true);
+            weaponView_->SetWeaponEquipped(false);
         }
         return;
     }
 
-    if (!IsValid(weaponView_) && weaponViewClass_)
+    if (!IsValid(weaponView_))
     {
-        FActorSpawnParameters spawnParams = {};
-        spawnParams.Owner = controlledPawn;
-        spawnParams.Instigator = controlledPawn;
-        spawnParams.ObjectFlags |= RF_Transient;
-        spawnParams.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
-        weaponView_ = GetWorld()->SpawnActor<AM1911WeaponView>(weaponViewClass_, FTransform::Identity, spawnParams);
+        InitializeWeaponInventory();
+        EquipWeaponAtIndex(equippedWeaponIndex_);
     }
 
     if (IsValid(weaponView_))
     {
         weaponView_->SetOwner(controlledPawn);
-        weaponView_->SetActorHiddenInGame(false);
+        weaponView_->SetWeaponEquipped(true);
 
         // 카메라 갱신 후 같은 프레임의 위치를 사용해 이동/회전 중 총이 뒤처지지 않게 한다.
         FMinimalViewInfo viewInfo = PlayerCameraManager->GetCameraCacheView();

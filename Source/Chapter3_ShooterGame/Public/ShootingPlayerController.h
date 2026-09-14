@@ -16,6 +16,20 @@ class ADistractionCoin;
 class USlowMotionSkillComponent;
 class UAssassinationTargetComponent;
 
+USTRUCT()
+struct FWeaponViewSlotState
+{
+    GENERATED_BODY()
+
+    UPROPERTY(Transient)
+    TSubclassOf<AM1911WeaponView> weaponClass_ = nullptr;
+
+    UPROPERTY(Transient)
+    TObjectPtr<AM1911WeaponView> instance_ = nullptr;
+
+    int32 ammo_ = 0;
+};
+
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnCoinThrown, ADistractionCoin*, coin);
 
 // 화면 중앙을 기준으로 단발 사격을 처리하는 플레이어 컨트롤러.
@@ -32,6 +46,27 @@ public:
 
     UFUNCTION(BlueprintCallable, Category = "Shooting|Magazine")
     void StartReload();
+
+    UFUNCTION(BlueprintCallable, Category = "Shooting|Weapon")
+    void NextWeapon();
+
+    UFUNCTION(BlueprintCallable, Category = "Shooting|Weapon")
+    void PreviousWeapon();
+
+    UFUNCTION(BlueprintCallable, Category = "Shooting|Weapon")
+    bool EquipWeaponAtIndex(int32 weaponIndex);
+
+    UFUNCTION(BlueprintPure, Category = "Shooting|Weapon")
+    AM1911WeaponView* GetCurrentWeapon() const
+    {
+        return weaponView_;
+    }
+
+    UFUNCTION(BlueprintPure, Category = "Shooting|Weapon")
+    int32 GetEquippedWeaponIndex() const
+    {
+        return equippedWeaponIndex_;
+    }
 
     UFUNCTION(BlueprintPure, Category = "Shooting|Magazine")
     int32 GetCurrentAmmo() const
@@ -105,6 +140,10 @@ protected:
     UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Shooting|Weapon")
     TSubclassOf<AM1911WeaponView> weaponViewClass_ = nullptr;
 
+    // 휠 순서대로 총 BP를 지정한다. 비어 있으면 기존 Weapon View Class 하나를 사용한다.
+    UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Shooting|Weapon")
+    TArray<TSubclassOf<AM1911WeaponView>> weaponViewClasses_ = {};
+
     UPROPERTY(VisibleInstanceOnly, BlueprintReadOnly, Category = "Shooting|Weapon")
     TObjectPtr<AM1911WeaponView> weaponView_ = nullptr;
 
@@ -147,6 +186,8 @@ protected:
     FTimerHandle reloadDelayTimer_ = {};
 
 private:
+    void InitializeWeaponInventory();
+    void CycleWeapon(int32 direction);
     void HandleAssassinationInput();
     void QueueAutomaticReload();
     void FinishReload();
@@ -168,4 +209,11 @@ private:
     bool reloading_ = false;
 
     FTimerHandle reloadTimer_ = {};
+
+    UPROPERTY(Transient)
+    TArray<FWeaponViewSlotState> weaponSlots_ = {};
+
+    int32 equippedWeaponIndex_ = INDEX_NONE;
+    bool weaponInventoryInitialized_ = false;
+    bool switchingWeapon_ = false;
 };
