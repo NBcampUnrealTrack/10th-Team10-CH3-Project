@@ -3,7 +3,7 @@
 #include "CoreMinimal.h"
 #include "GameFramework/PlayerController.h"
 #include "InputActionValue.h"
-#include "ShooterGame_PlayerController.generated.h"
+#include "Chapter3_ShooterGame_PlayerController.generated.h"
 
 class UInputMappingContext;
 class UInputAction;
