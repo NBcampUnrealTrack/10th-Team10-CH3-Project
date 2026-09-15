@@ -93,10 +93,6 @@ protected:
     UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Shooting|Weapon")
     TArray<TSubclassOf<AM1911WeaponView>> weaponViewClasses_ = {};
 
-    // 무기 목록이 비어 있는 기존 컨트롤러에서 기본 총과 함께 전환할 무기.
-    UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Shooting|Weapon")
-    TSoftClassPtr<AM1911WeaponView> secondaryWeaponViewClass_;
-
     UPROPERTY(VisibleInstanceOnly, BlueprintReadOnly, Category = "Shooting|Weapon")
     TObjectPtr<AM1911WeaponView> weaponView_ = nullptr;
 
@@ -250,7 +246,6 @@ private:
     void InitializeWeaponInventory();
     void CycleWeapon(int32 direction);
     void HandleAssassinationInput();
-    void HandleWeaponAttachmentInput();
     void QueueAutomaticReload();
     void FinishReload();
     void BindGameplayInput(UEnhancedInputComponent* enhancedInput);
