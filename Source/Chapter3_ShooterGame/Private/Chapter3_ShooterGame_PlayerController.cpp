@@ -24,27 +24,27 @@ DEFINE_LOG_CATEGORY_STATIC(LogShooting, Log, All);
 
 namespace
 {
-	constexpr float kDefaultFireRange = 10000.0f;
-	constexpr float kDefaultDamage = 20.0f;
-	constexpr float kDefaultFireInterval = 0.2f;
-	constexpr float kDefaultReloadDuration = 1.8f;
-	constexpr float kMinimumReloadDuration = 0.2f;
-	constexpr int32 kFireMappingPriority = 1;
-	constexpr float kDebugDuration = 1.0f;
-	constexpr float kDebugLineThickness = 1.0f;
-	constexpr float kDebugHitRadius = 8.0f;
-	constexpr int32 kDebugSphereSegments = 12;
-	constexpr float kFirstPersonScale = 0.8f;
-	constexpr float kDefaultCoinThrowSpeed = 1000.0f;
-	constexpr float kDefaultCoinUpwardSpeed = 300.0f;
-	constexpr float kDefaultCoinThrowInterval = 0.6f;
-	constexpr float kCoinSpawnForwardOffset = 45.0f;
-	constexpr float kCoinSpawnRightOffset = 12.0f;
-	constexpr float kCoinSpawnDownOffset = 10.0f;
-
+    constexpr float kDefaultFireRange = 10000.0f;
+    constexpr float kDefaultDamage = 20.0f;
+    constexpr float kDefaultFireInterval = 0.2f;
+    constexpr float kDefaultReloadDuration = 1.8f;
+    constexpr float kMinimumReloadDuration = 0.2f;
+    constexpr int32 kFireMappingPriority = 1;
+    constexpr float kDebugDuration = 1.0f;
+    constexpr float kDebugLineThickness = 1.0f;
+    constexpr float kDebugHitRadius = 8.0f;
+    constexpr int32 kDebugSphereSegments = 12;
+    constexpr float kFirstPersonScale = 0.8f;
+    constexpr float kDefaultCoinThrowSpeed = 1000.0f;
+    constexpr float kDefaultCoinUpwardSpeed = 300.0f;
+    constexpr float kDefaultCoinThrowInterval = 0.6f;
+    constexpr float kCoinSpawnForwardOffset = 45.0f;
+    constexpr float kCoinSpawnRightOffset = 12.0f;
+    constexpr float kCoinSpawnDownOffset = 10.0f;
+}
 
 AChapter3_ShooterGame_PlayerController::AChapter3_ShooterGame_PlayerController()
-	: InputMappingContext(nullptr)
+	: inputMappingContext_(nullptr)
 	, MoveAction(nullptr)
 	, LookAction(nullptr)
 	, SprintAction(nullptr)
@@ -67,7 +67,7 @@ AChapter3_ShooterGame_PlayerController::AChapter3_ShooterGame_PlayerController()
 	coinThrowInterval_ = kDefaultCoinThrowInterval;
 	slowMotionSkill_ = CreateDefaultSubobject<USlowMotionSkillComponent>(TEXT("SlowMotionSkill"));
 
-}
+};
 
 void AChapter3_ShooterGame_PlayerController::BeginPlay()
 {
@@ -81,9 +81,9 @@ void AChapter3_ShooterGame_PlayerController::BeginPlay()
 	{
 		if (UEnhancedInputLocalPlayerSubsystem* Subsystem = LocalPlayer->GetSubsystem<UEnhancedInputLocalPlayerSubsystem>())
 		{
-			if (InputMappingContext)
+			if (inputMappingContext_)
 			{
-				Subsystem->AddMappingContext(InputMappingContext, 0);
+				Subsystem->AddMappingContext(inputMappingContext_, 0);
 			}
 		}
 	}
@@ -107,18 +107,47 @@ void AChapter3_ShooterGame_PlayerController::SetupInputComponent()
 		EnhancedInputComponent->BindAction(ParkourAction, ETriggerEvent::Started, this, &AChapter3_ShooterGame_PlayerController::HandleParkour);
 		EnhancedInputComponent->BindAction(InteractAction, ETriggerEvent::Started, this, &AChapter3_ShooterGame_PlayerController::HandleInteract);
 
-		EnhancedInputComponent->BindAction(FireAction, ETriggerEvent::Started, this, &AChapter3_ShooterGame_PlayerController::HandleFireStart);
-		EnhancedInputComponent->BindAction(FireAction, ETriggerEvent::Completed, this, &AChapter3_ShooterGame_PlayerController::HandleFireStop);
-
-		EnhancedInputComponent->BindAction(AimAction, ETriggerEvent::Started, this, &AChapter3_ShooterGame_PlayerController::HandleAimStart);
-		EnhancedInputComponent->BindAction(AimAction, ETriggerEvent::Completed, this, &AChapter3_ShooterGame_PlayerController::HandleAimStop);
-
-		EnhancedInputComponent->BindAction(Skill1Action, ETriggerEvent::Started, this, &AChapter3_ShooterGame_PlayerController::HandleSkill1);
-		EnhancedInputComponent->BindAction(Skill2Action, ETriggerEvent::Started, this, &AChapter3_ShooterGame_PlayerController::HandleSkill2);
-
 		EnhancedInputComponent->BindAction(LeanAction, ETriggerEvent::Triggered, this, &AChapter3_ShooterGame_PlayerController::HandleLean);
 		EnhancedInputComponent->BindAction(LeanAction, ETriggerEvent::Completed, this, &AChapter3_ShooterGame_PlayerController::HandleLean);
 	}
+
+    // 프로젝트의 전역 입력 설정과 관계없이 이 컨트롤러는 Enhanced Input을 사용한다.
+    if (!InputComponent)
+    {
+        InputComponent = NewObject<UEnhancedInputComponent>(this, TEXT("ShootingInputComponent"));
+        InputComponent->RegisterComponent();
+    }
+
+    UEnhancedInputComponent* enhancedInput = Cast<UEnhancedInputComponent>(InputComponent);
+    if (!enhancedInput)
+    {
+        UE_LOG(LogShooting, Error, TEXT("Set Default Input Component Class to EnhancedInputComponent in Project Settings > Input."));
+        return;
+    }
+
+    ULocalPlayer* localPlayer = GetLocalPlayer();
+    if (!localPlayer)
+    {
+        return;
+    }
+
+    UEnhancedInputLocalPlayerSubsystem* subsystem = localPlayer->GetSubsystem<UEnhancedInputLocalPlayerSubsystem>();
+    if (!subsystem)
+    {
+        return;
+    }
+
+    if (!inputMappingContext_)
+    {
+        UE_LOG(LogShooting, Warning, TEXT("Assign the Input Mapping Context in the controller Blueprint."));
+        return;
+    }
+
+    BindGameplayInput(enhancedInput);
+
+    // 다른 이동/시점 매핑은 유지하고 사격용 매핑만 등록한다.
+    subsystem->AddMappingContext(inputMappingContext_, kFireMappingPriority);
+    inputSubsystem_ = subsystem;
 }
 
 void AChapter3_ShooterGame_PlayerController::HandleMove(const FInputActionValue& Value)
@@ -248,49 +277,6 @@ bool AChapter3_ShooterGame_PlayerController::TryActivateSlowMotion()
         && slowMotionSkill_->TryActivateSlowMotion();
 }
 
-void AChapter3_ShooterGame_PlayerController::SetupInputComponent()
-{
-    // 프로젝트의 전역 입력 설정과 관계없이 이 컨트롤러는 Enhanced Input을 사용한다.
-    if (!InputComponent)
-    {
-        InputComponent = NewObject<UEnhancedInputComponent>(this, TEXT("ShootingInputComponent"));
-        InputComponent->RegisterComponent();
-    }
-
-    Super::SetupInputComponent();
-
-    UEnhancedInputComponent* enhancedInput = Cast<UEnhancedInputComponent>(InputComponent);
-    if (!enhancedInput)
-    {
-        UE_LOG(LogShooting, Error, TEXT("Set Default Input Component Class to EnhancedInputComponent in Project Settings > Input."));
-        return;
-    }
-
-    ULocalPlayer* localPlayer = GetLocalPlayer();
-    if (!localPlayer)
-    {
-        return;
-    }
-
-    UEnhancedInputLocalPlayerSubsystem* subsystem = localPlayer->GetSubsystem<UEnhancedInputLocalPlayerSubsystem>();
-    if (!subsystem)
-    {
-        return;
-    }
-
-    if (!inputMappingContext_)
-    {
-        UE_LOG(LogShooting, Warning, TEXT("Assign the Input Mapping Context in the controller Blueprint."));
-        return;
-    }
-
-    BindGameplayInput(enhancedInput);
-
-    // 다른 이동/시점 매핑은 유지하고 사격용 매핑만 등록한다.
-    subsystem->AddMappingContext(inputMappingContext_, kFireMappingPriority);
-    inputSubsystem_ = subsystem;
-}
-
 void AChapter3_ShooterGame_PlayerController::BindGameplayInput(UEnhancedInputComponent* enhancedInput)
 {
     if (reloadAction_)
@@ -306,7 +292,7 @@ void AChapter3_ShooterGame_PlayerController::BindGameplayInput(UEnhancedInputCom
     if (assassinationAction_)
     {
         enhancedInput->BindAction(assassinationAction_, ETriggerEvent::Started, this,
-            &AShootingPlayerController::HandleAssassinationInput);
+            &AChapter3_ShooterGame_PlayerController::HandleAssassinationInput);
     }
     else
     {
@@ -315,19 +301,19 @@ void AChapter3_ShooterGame_PlayerController::BindGameplayInput(UEnhancedInputCom
 
     if (fireAction_)
     {
-        enhancedInput->BindAction(fireAction_, ETriggerEvent::Started, this, &AShootingPlayerController::Fire);
+        enhancedInput->BindAction(fireAction_, ETriggerEvent::Started, this, &AChapter3_ShooterGame_PlayerController::Fire);
     }
 
     if (aimAction_)
     {
-        enhancedInput->BindAction(aimAction_, ETriggerEvent::Started, this, &AShootingPlayerController::StartAiming);
-        enhancedInput->BindAction(aimAction_, ETriggerEvent::Completed, this, &AShootingPlayerController::StopAiming);
-        enhancedInput->BindAction(aimAction_, ETriggerEvent::Canceled, this, &AShootingPlayerController::StopAiming);
+        enhancedInput->BindAction(aimAction_, ETriggerEvent::Started, this, &AChapter3_ShooterGame_PlayerController::StartAiming);
+        enhancedInput->BindAction(aimAction_, ETriggerEvent::Completed, this, &AChapter3_ShooterGame_PlayerController::StopAiming);
+        enhancedInput->BindAction(aimAction_, ETriggerEvent::Canceled, this, &AChapter3_ShooterGame_PlayerController::StopAiming);
     }
 
     if (throwCoinAction_)
     {
-        enhancedInput->BindAction(throwCoinAction_, ETriggerEvent::Started, this, &AShootingPlayerController::ThrowCoin);
+        enhancedInput->BindAction(throwCoinAction_, ETriggerEvent::Started, this, &AChapter3_ShooterGame_PlayerController::ThrowCoin);
     }
 }
 
@@ -645,7 +631,7 @@ void AChapter3_ShooterGame_PlayerController::QueueAutomaticReload()
         return;
     }
     GetWorldTimerManager().SetTimer(reloadDelayTimer_, this,
-        &AShootingPlayerController::StartReload, delay, false);
+        &AChapter3_ShooterGame_PlayerController::StartReload, delay, false);
 }
 
 void AChapter3_ShooterGame_PlayerController::StartReload()
@@ -662,7 +648,7 @@ void AChapter3_ShooterGame_PlayerController::StartReload()
         ? FMath::Max(kMinimumReloadDuration, reloadDuration_) : kDefaultReloadDuration;
     reloading_ = true;
     GetWorldTimerManager().SetTimer(reloadTimer_, this,
-        &AShootingPlayerController::FinishReload, duration, false);
+        &AChapter3_ShooterGame_PlayerController::FinishReload, duration, false);
 }
 
 void AChapter3_ShooterGame_PlayerController::FinishReload()
@@ -763,7 +749,7 @@ void AChapter3_ShooterGame_PlayerController::FlushPressedKeys()
     StopAiming();
 }
 
-void AShootingPlayerController::UpdateCameraManager(float deltaSeconds)
+void AChapter3_ShooterGame_PlayerController::UpdateCameraManager(float deltaSeconds)
 {
     Super::UpdateCameraManager(deltaSeconds);
 

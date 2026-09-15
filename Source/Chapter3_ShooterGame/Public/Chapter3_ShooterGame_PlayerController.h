@@ -6,16 +6,14 @@
 #include "InputActionValue.h"
 #include "Chapter3_ShooterGame_PlayerController.generated.h"
 
-class UInputMappingContext;
-class UInputAction;
-
 class UEnhancedInputLocalPlayerSubsystem;
 class UEnhancedInputComponent;
+class UInputAction;
+class UInputMappingContext;
 class AM1911WeaponView;
 class ADistractionCoin;
 class USlowMotionSkillComponent;
 class UAssassinationTargetComponent;
-
 
 USTRUCT()
 struct FWeaponViewSlotState
@@ -138,9 +136,6 @@ protected:
 
 
 public:
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Input")
-	UInputMappingContext* InputMappingContext;
-
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Input")
 	UInputAction* MoveAction;
 
