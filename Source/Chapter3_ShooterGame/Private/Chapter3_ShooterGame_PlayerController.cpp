@@ -4,6 +4,7 @@
 #include "EnhancedInputSubsystems.h"
 
 #include "M1911WeaponView.h"
+#include "WeaponAttachmentComponent.h"
 #include "DistractionCoin.h"
 #include "SlowMotionSkillComponent.h"
 #include "AssassinationTargetComponent.h"
@@ -18,6 +19,7 @@
 #include "GameFramework/Pawn.h"
 #include "InputAction.h"
 #include "InputMappingContext.h"
+#include "InputCoreTypes.h"
 #include "Kismet/GameplayStatics.h"
 
 DEFINE_LOG_CATEGORY_STATIC(LogShooting, Log, All);
@@ -66,6 +68,9 @@ AChapter3_ShooterGame_PlayerController::AChapter3_ShooterGame_PlayerController()
 	coinUpwardSpeed_ = kDefaultCoinUpwardSpeed;
 	coinThrowInterval_ = kDefaultCoinThrowInterval;
 	slowMotionSkill_ = CreateDefaultSubobject<USlowMotionSkillComponent>(TEXT("SlowMotionSkill"));
+
+    secondaryWeaponViewClass_ = TSoftClassPtr<AM1911WeaponView>(FSoftObjectPath(
+        TEXT("/Game/weapon/Pistol9mmCustom/BP_PistolView.BP_PistolView_C")));
 
 };
 
@@ -248,18 +253,12 @@ void AChapter3_ShooterGame_PlayerController::HandleAimStop(const FInputActionVal
 
 void AChapter3_ShooterGame_PlayerController::HandleSkill1(const FInputActionValue& Value)
 {
-	if (AChapter3_ShooterGame_Character* Char = GetPawn<AChapter3_ShooterGame_Character>())
-	{
-		Char->UseSkill1();
-	}
+    ThrowCoin();
 }
 
 void AChapter3_ShooterGame_PlayerController::HandleSkill2(const FInputActionValue& Value)
 {
-	if (AChapter3_ShooterGame_Character* Char = GetPawn<AChapter3_ShooterGame_Character>())
-	{
-		Char->UseSkill2();
-	}
+    TryActivateSlowMotion();
 }
 
 void AChapter3_ShooterGame_PlayerController::HandleLean(const FInputActionValue& Value)
@@ -311,10 +310,56 @@ void AChapter3_ShooterGame_PlayerController::BindGameplayInput(UEnhancedInputCom
         enhancedInput->BindAction(aimAction_, ETriggerEvent::Canceled, this, &AChapter3_ShooterGame_PlayerController::StopAiming);
     }
 
-    if (throwCoinAction_)
+    // 두 속성에 같은 동전 액션이 지정되어도 한 번만 바인딩한다.
+    const UInputAction* coinAction = Skill1Action ? Skill1Action : throwCoinAction_.Get();
+    if (coinAction)
     {
-        enhancedInput->BindAction(throwCoinAction_, ETriggerEvent::Started, this, &AChapter3_ShooterGame_PlayerController::ThrowCoin);
+        enhancedInput->BindAction(coinAction, ETriggerEvent::Started, this,
+            &AChapter3_ShooterGame_PlayerController::HandleSkill1);
     }
+
+    if (Skill2Action)
+    {
+        enhancedInput->BindAction(Skill2Action, ETriggerEvent::Started, this,
+            &AChapter3_ShooterGame_PlayerController::HandleSkill2);
+    }
+
+    // 새 IMC_Main에는 부착/휠 액션이 없으므로 지정된 키를 컨트롤러에서 처리한다.
+    InputComponent->BindKey(EKeys::H, IE_Pressed, this,
+        &AChapter3_ShooterGame_PlayerController::HandleWeaponAttachmentInput);
+    InputComponent->BindKey(EKeys::MouseScrollUp, IE_Pressed, this,
+        &AChapter3_ShooterGame_PlayerController::NextWeapon);
+    InputComponent->BindKey(EKeys::MouseScrollDown, IE_Pressed, this,
+        &AChapter3_ShooterGame_PlayerController::PreviousWeapon);
+}
+
+void AChapter3_ShooterGame_PlayerController::HandleWeaponAttachmentInput()
+{
+    AM1911WeaponView* weapon = GetCurrentWeapon();
+    if (!IsLocalController() || !IsValid(GetPawn()) || !GetWorld() || GetWorld()->IsPaused()
+        || !IsValid(weapon) || !IsValid(weapon->attachmentComponent_))
+    {
+        return;
+    }
+
+    // 현재 총의 슬롯 설정을 사용하므로 총마다 다른 소음기와 위치를 유지한다.
+    UWeaponAttachmentComponent* attachments = weapon->attachmentComponent_;
+    const FName silencerSlot(TEXT("silencer"));
+    if (attachments->GetAttachment(silencerSlot) != nullptr)
+    {
+        attachments->UnequipAttachment(silencerSlot);
+        return;
+    }
+
+    for (const FWeaponAttachmentSlot& slot : attachments->attachmentSlots_)
+    {
+        if (slot.slotName_ == silencerSlot)
+        {
+            attachments->EquipAttachment(silencerSlot, slot.defaultAttachmentClass_);
+            return;
+        }
+    }
+    UE_LOG(LogShooting, Warning, TEXT("Current weapon %s has no silencer slot."), *GetNameSafe(weapon));
 }
 
 void AChapter3_ShooterGame_PlayerController::InitializeWeaponInventory()
@@ -328,6 +373,10 @@ void AChapter3_ShooterGame_PlayerController::InitializeWeaponInventory()
     if (classes.IsEmpty() && weaponViewClass_)
     {
         classes.Add(weaponViewClass_);
+        if (UClass* secondaryClass = secondaryWeaponViewClass_.LoadSynchronous())
+        {
+            classes.AddUnique(TSubclassOf<AM1911WeaponView>(secondaryClass));
+        }
     }
     for (TSubclassOf<AM1911WeaponView> weaponClass : classes)
     {
@@ -527,7 +576,8 @@ void AChapter3_ShooterGame_PlayerController::ThrowCoin()
     FActorSpawnParameters spawnParams = {};
     spawnParams.Owner = controlledPawn;
     spawnParams.Instigator = controlledPawn;
-    spawnParams.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::DontSpawnIfColliding;
+    // 위 Sweep에서 벽을 검사하고 투척자는 제외했다. 생성 단계에서 자기 캡슐로 다시 거부하지 않는다.
+    spawnParams.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
     ADistractionCoin* coin = world->SpawnActor<ADistractionCoin>(coinClass_, spawnLocation, viewRotation, spawnParams);
     if (!IsValid(coin))
     {
