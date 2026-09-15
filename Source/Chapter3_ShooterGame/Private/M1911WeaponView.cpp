@@ -190,6 +190,29 @@ void AM1911WeaponView::SetReloadState(bool isReloading, float progress)
     }
 }
 
+void AM1911WeaponView::SetWeaponEquipped(bool equipped)
+{
+    if (!equipped)
+    {
+        SetReloadState(false, 0.0f);
+        shotElapsed_ = kRecoilDuration;
+        recoilWeight_ = 0.0f;
+        aimAlpha_ = 0.0f;
+        muzzleFlash_->SetVisibility(false);
+        muzzleLight_->SetVisibility(false);
+    }
+    SetActorHiddenInGame(!equipped);
+    TArray<AActor*> attachedActors = {};
+    GetAttachedActors(attachedActors, true, true);
+    for (AActor* attachedActor : attachedActors)
+    {
+        if (IsValid(attachedActor))
+        {
+            attachedActor->SetActorHiddenInGame(!equipped);
+        }
+    }
+}
+
 void AM1911WeaponView::ApplyReloadPose(FVector& viewLocation, FQuat& viewRotation)
 {
     if (!isReloading_)
