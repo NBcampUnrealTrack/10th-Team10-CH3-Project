@@ -7,6 +7,15 @@ AEnemySpawner::AEnemySpawner()
 	PrimaryActorTick.bCanEverTick = false;
 }
 
+void AEnemySpawner::SetNumberOfSpawn(uint8 newValue)
+{
+	numberOfSpawn_ = newValue;
+}
+uint8 AEnemySpawner::GetNumberOfSpawn(void)
+{
+	return numberOfSpawn_;
+}
+
 void AEnemySpawner::BeginPlay()
 {
 	Super::BeginPlay();

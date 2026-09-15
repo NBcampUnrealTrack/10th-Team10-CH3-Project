@@ -102,8 +102,9 @@ void AEnemyCharacter::AlertCalculation(void)
 						alertType_ = EAlertType::attack;
 						enemyAIController->SetFocus(playerPawn);
 						enemyAIController->StopEnemy();
-						//적 AI가 플레이어를 감지했을 때, 플레이어를 향해 이동하도록 설정합니다.
-						//적 AI 공격 구현.
+
+						//적 AI 공격 구현
+						GetWorldTimerManager().SetTimer(EnemyAttackIntervalTimer_, this, &AEnemyCharacter::StartFire, 2.0f, true);
 					}
 					return;
 				}
@@ -118,7 +119,8 @@ void AEnemyCharacter::AlertCalculation(void)
 				GEngine->AddOnScreenDebugMessage(-1, 1.0f, FColor::Green, FString::Printf(TEXT("Mode: Patrol!")));
 
 				alertType_ = EAlertType::patrol;
-				//SetMovementSpeed();
+				GetWorldTimerManager().ClearTimer(EnemyAttackIntervalTimer_);
+				SetMovementSpeed();
 
 				return;
 			}
@@ -131,6 +133,7 @@ void AEnemyCharacter::DestroyEnemy(void)
 	if (AEnemyAIController* enemyAIController = Cast<AEnemyAIController>(GetController()))
 	{
 		GetWorldTimerManager().ClearTimer(EnemyStateUpdateTimer_);
+		GetWorldTimerManager().ClearTimer(EnemyAttackIntervalTimer_);
 		enemyAIController->ClearControllerTimer();
 
 		Destroy();
@@ -159,19 +162,27 @@ float AEnemyCharacter::TakeDamage(float DamageAmount, struct FDamageEvent const&
 
 	if (currentHealth_ <= 0.0f) {
 		//적 AI 사망 시, OnDeath() 함수 호출
-		//OnDeath();
+		OnDeath();
 	}
 
 	return ActualDamage;
 }
 
+void AEnemyCharacter::StartFire(void) {
+	if (AEnemyAIController* enemyAIController = Cast<AEnemyAIController>(GetController()))
+	{
+		GEngine->AddOnScreenDebugMessage(-1, 1.0f, FColor::Red, FString::Printf(TEXT("Enemy Attack Successed!")));
+		enemyAIController->Fire();
+	}
+}
 void AEnemyCharacter::OnDeath(void) {
-	//적 AI 사망 로직 구현
+	//적 AI 사망 정보 GameState에 전송해야 함!
 
+	//적 AI 사망 로직 구현
+	DestroyEnemy();
 }
 
 void AEnemyCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputComponent)
 {
 	Super::SetupPlayerInputComponent(PlayerInputComponent);
-
 }

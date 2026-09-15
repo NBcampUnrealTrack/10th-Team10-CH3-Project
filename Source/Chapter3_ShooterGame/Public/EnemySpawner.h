@@ -18,6 +18,9 @@ public:
 	uint16 numberOfSet_ = 0;
 	uint16 numberOfDelete_ = 0;
 
+	void SetNumberOfSpawn(uint8 newValue);
+	uint8 GetNumberOfSpawn(void);
+
 protected:
 	virtual void BeginPlay() override;
 };
