@@ -9,6 +9,7 @@
 #include "AssassinationTargetComponent.h"
 #include "EngineUtils.h"
 #include "Camera/PlayerCameraManager.h"
+#include "Components/PrimitiveComponent.h"
 
 #include "DrawDebugHelpers.h"
 #include "Engine/LocalPlayer.h"
@@ -487,15 +488,21 @@ void AChapter3_ShooterGame_PlayerController::ThrowCoin()
 {
     UWorld* world = GetWorld();
     APawn* controlledPawn = GetPawn();
+    UE_LOG(LogShooting, Log, TEXT("[CoinThrow] Requested by %s"), *GetName());
     if (!world || !IsValid(controlledPawn) || !IsLocalController() || !HasAuthority()
         || world->IsPaused() || !coinClass_ || coinThrowSpeed_ <= 0.0f)
     {
+        UE_LOG(LogShooting, Warning,
+            TEXT("[CoinThrow] Preconditions failed: World=%d Pawn=%s Local=%d Authority=%d Paused=%d Class=%s Speed=%.1f"),
+            world != nullptr, *GetNameSafe(controlledPawn), IsLocalController(), HasAuthority(),
+            world ? world->IsPaused() : false, *GetNameSafe(coinClass_.Get()), coinThrowSpeed_);
         return;
     }
 
     const double currentTime = world->GetTimeSeconds();
     if (currentTime < nextCoinThrowTime_)
     {
+        UE_LOG(LogShooting, Log, TEXT("[CoinThrow] Cooldown: %.3f seconds remaining"), nextCoinThrowTime_ - currentTime);
         return;
     }
 
@@ -521,24 +528,37 @@ void AChapter3_ShooterGame_PlayerController::ThrowCoin()
     if (world->SweepSingleByChannel(obstruction, viewLocation, spawnLocation,
         FQuat::Identity, ECC_WorldDynamic, collisionShape, queryParams))
     {
+        UE_LOG(LogShooting, Warning,
+            TEXT("[CoinThrow] Spawn path blocked: Actor=%s Component=%s StartPenetrating=%d From=%s To=%s Radius=%.2f"),
+            *GetNameSafe(obstruction.GetActor()), *GetNameSafe(obstruction.GetComponent()), static_cast<int32>(obstruction.bStartPenetrating),
+            *viewLocation.ToString(), *spawnLocation.ToString(), defaultCoin->GetCollisionRadius());
         return;
     }
 
     FActorSpawnParameters spawnParams = {};
     spawnParams.Owner = controlledPawn;
     spawnParams.Instigator = controlledPawn;
-    spawnParams.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::DontSpawnIfColliding;
+    spawnParams.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
     ADistractionCoin* coin = world->SpawnActor<ADistractionCoin>(coinClass_, spawnLocation, viewRotation, spawnParams);
     if (!IsValid(coin))
     {
+        UE_LOG(LogShooting, Warning, TEXT("[CoinThrow] Spawn failed: Class=%s Location=%s (invalid class or spawn/construction failure)"),
+            *GetNameSafe(coinClass_.Get()), *spawnLocation.ToString());
         return;
     }
 
     nextCoinThrowTime_ = currentTime + FMath::Max(0.0f, coinThrowInterval_);
+    UE_LOG(LogShooting, Log, TEXT("[CoinThrow] Spawned %s at %s"), *GetNameSafe(coin), *coin->GetActorLocation().ToString());
     onCoinThrown_.Broadcast(coin);
     if (IsValid(coin))
     {
         coin->LaunchCoin(throwDirection * coinThrowSpeed_ + FVector::UpVector * coinUpwardSpeed_);
+        UE_LOG(LogShooting, Log, TEXT("[CoinThrow] Launch requested: Actor=%s Velocity=%s"),
+            *GetNameSafe(coin), *coin->GetVelocity().ToString());
+    }
+    else
+    {
+        UE_LOG(LogShooting, Warning, TEXT("[CoinThrow] Coin destroyed by an OnCoinThrown listener before launch"));
     }
 }
 
