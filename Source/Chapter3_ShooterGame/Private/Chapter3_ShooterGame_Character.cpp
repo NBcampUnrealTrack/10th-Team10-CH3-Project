@@ -9,9 +9,9 @@
 
 AChapter3_ShooterGame_Character::AChapter3_ShooterGame_Character()
 {
-	PrimaryActorTick.bCanEverTick = true;
+ 	PrimaryActorTick.bCanEverTick = true;
 
-	// Ä«¸Ş¶ó 
+	// ì¹´ë©”ë¼ 
 	bUseControllerRotationYaw = true;
 	bUseControllerRotationPitch = false;
 	bUseControllerRotationRoll = false;
@@ -20,13 +20,13 @@ AChapter3_ShooterGame_Character::AChapter3_ShooterGame_Character()
 	GetCharacterMovement()->MaxWalkSpeed = WalkSpeed;
 	GetCharacterMovement()->MaxWalkSpeedCrouched = CrouchSpeed;
 
-	// 1ÀÎÄª Ä«¸Ş¶ó 
+	// 1ì¸ì¹­ ì¹´ë©”ë¼ 
 	FirstPersonCameraComponent = CreateDefaultSubobject<UCameraComponent>(TEXT("FirstPersonCamera"));
 	FirstPersonCameraComponent->SetupAttachment(GetCapsuleComponent());
 	FirstPersonCameraComponent->SetRelativeLocation(FVector(-10.f, 0.f, BaseEyeHeight));
 	FirstPersonCameraComponent->bUsePawnControlRotation = true;
 
-	// ¹«±â
+	// ë¬´ê¸°
 	Mesh1P = CreateDefaultSubobject<USkeletalMeshComponent>(TEXT("CharacterMesh1P"));
 	Mesh1P->SetOnlyOwnerSee(true);
 	Mesh1P->SetupAttachment(FirstPersonCameraComponent);
@@ -34,7 +34,7 @@ AChapter3_ShooterGame_Character::AChapter3_ShooterGame_Character()
 	Mesh1P->CastShadow = false;
 	Mesh1P->SetRelativeLocation(FVector(-30.f, 0.f, -150.f));
 
-	// Àü½Å ¸Ş½¬
+	// ì „ì‹  ë©”ì‰¬
 	GetMesh()->SetOwnerNoSee(true);
 }
 

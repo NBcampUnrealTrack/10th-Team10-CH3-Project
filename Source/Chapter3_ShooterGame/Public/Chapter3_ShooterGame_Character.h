@@ -29,36 +29,36 @@ public:
 	FORCEINLINE class UCameraComponent* GetFirstPersonCameraComponent() const { return FirstPersonCameraComponent; }
 	FORCEINLINE class USkeletalMeshComponent* GetMesh1P() const { return Mesh1P; }
 
-	// PlayerController°¡ IA_Move °ªÀ» ¹Ş¾Æ ¿©±â·Î ³Ñ°ÜÁÜ (X = ÁÂ¿ì, Y = ÀüÈÄ)
+	// PlayerControllerê°€ IA_Move ê°’ì„ ë°›ì•„ ì—¬ê¸°ë¡œ ë„˜ê²¨ì¤Œ (X = ì¢Œìš°, Y = ì „í›„)
 	void Move(FVector2D MovementVector);
 
-	// PlayerController°¡ IA_Look °ªÀ» ¹Ş¾Æ ¿©±â·Î ³Ñ°ÜÁÜ (X = Yaw, Y = Pitch)
+	// PlayerControllerê°€ IA_Look ê°’ì„ ë°›ì•„ ì—¬ê¸°ë¡œ ë„˜ê²¨ì¤Œ (X = Yaw, Y = Pitch)
 	void Look(FVector2D LookAxisVector);
 
-	// bSprint = true¸é ´Ş¸®±â ½ÃÀÛ, false¸é ¸ØÃã
+	// bSprint = trueë©´ ë‹¬ë¦¬ê¸° ì‹œì‘, falseë©´ ë©ˆì¶¤
 	void SetSprinting(bool bSprint);
 
-	// bCrouch = true¸é ¾É±â, false¸é ÀÏ¾î¼­±â
+	// bCrouch = trueë©´ ì•‰ê¸°, falseë©´ ì¼ì–´ì„œê¸°
 	void SetCrouching(bool bCrouch);
 
-	// ÆÄÄí¸£ ½Ãµµ (½ºÆäÀÌ½º¹Ù)
+	// íŒŒì¿ ë¥´ ì‹œë„ (ìŠ¤í˜ì´ìŠ¤ë°”)
 	void TryParkour();
 
-	// »óÈ£ÀÛ¿ë ½Ãµµ (F)
+	// ìƒí˜¸ì‘ìš© ì‹œë„ (F)
 	void Interact();
 
-	// °İ¹ß ½ÃÀÛ/Á¾·á (ÁÂÅ¬¸¯)
+	// ê²©ë°œ ì‹œì‘/ì¢…ë£Œ (ì¢Œí´ë¦­)
 	void StartFire();
 	void StopFire();
 
-	// bAim = true¸é Á¤Á¶ÁØ ½ÃÀÛ, false¸é Á¤Á¶ÁØ ÇØÁ¦ (¿ìÅ¬¸¯)
+	// bAim = trueë©´ ì •ì¡°ì¤€ ì‹œì‘, falseë©´ ì •ì¡°ì¤€ í•´ì œ (ìš°í´ë¦­)
 	void SetAiming(bool bAim);
 
-	// ½ºÅ³ »ç¿ë (1, 2)
+	// ìŠ¤í‚¬ ì‚¬ìš© (1, 2)
 	void UseSkill1();
 	void UseSkill2();
 
-	// ±â¿ïÀÌ±â(peek) °ª ¼³Á¤. -1(¿ŞÂÊ, Q) ~ 1(¿À¸¥ÂÊ, E), 0ÀÌ¸é ¿øÀ§Ä¡
+	// ê¸°ìš¸ì´ê¸°(peek) ê°’ ì„¤ì •. -1(ì™¼ìª½, Q) ~ 1(ì˜¤ë¥¸ìª½, E), 0ì´ë©´ ì›ìœ„ì¹˜
 	void SetLean(float LeanValue);
 
 protected:
