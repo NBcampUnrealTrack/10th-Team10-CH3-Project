@@ -36,10 +36,10 @@ namespace
             world_->DestroyWorld(false);
         }
 
-        AShootingPlayerController* CreateController(int32 weaponCount, bool useLegacy = false)
+        AChapter3_ShooterGame_PlayerController* CreateController(int32 weaponCount, bool useLegacy = false)
         {
-            AShootingPlayerController* controller = world_->SpawnActorDeferred<AShootingPlayerController>(
-                AShootingPlayerController::StaticClass(), FTransform::Identity);
+            AChapter3_ShooterGame_PlayerController* controller = world_->SpawnActorDeferred<AChapter3_ShooterGame_PlayerController>(
+                AChapter3_ShooterGame_PlayerController::StaticClass(), FTransform::Identity);
             if (useLegacy)
             {
                 FClassProperty* property = FindFProperty<FClassProperty>(controller->GetClass(), TEXT("weaponViewClass_"));
@@ -80,7 +80,7 @@ IMPLEMENT_SIMPLE_AUTOMATION_TEST(FWeaponSwitchLifecycleTest, "CH3.WeaponSwitch.L
 bool FWeaponSwitchLifecycleTest::RunTest(const FString& parameters)
 {
     FWeaponSwitchTestWorld testWorld = {};
-    AShootingPlayerController* controller = testWorld.CreateController(3);
+    AChapter3_ShooterGame_PlayerController* controller = testWorld.CreateController(3);
     TestTrue(TEXT("Initial weapon equips"), controller->EquipWeaponAtIndex(0));
     AM1911WeaponView* first = controller->GetCurrentWeapon();
     if (!TestNotNull(TEXT("First weapon exists"), first))
@@ -138,7 +138,7 @@ IMPLEMENT_SIMPLE_AUTOMATION_TEST(FWeaponSwitchLegacyTest, "CH3.WeaponSwitch.Lega
 bool FWeaponSwitchLegacyTest::RunTest(const FString& parameters)
 {
     FWeaponSwitchTestWorld testWorld = {};
-    AShootingPlayerController* legacy = testWorld.CreateController(0, true);
+    AChapter3_ShooterGame_PlayerController* legacy = testWorld.CreateController(0, true);
     TestTrue(TEXT("Old single-class setting still equips"), legacy->EquipWeaponAtIndex(0));
     AM1911WeaponView* original = legacy->GetCurrentWeapon();
     legacy->Fire();
@@ -147,7 +147,7 @@ bool FWeaponSwitchLegacyTest::RunTest(const FString& parameters)
     TestTrue(TEXT("One-weapon scrolling does not respawn"), legacy->GetCurrentWeapon() == original);
     TestEqual(TEXT("One-weapon scrolling does not refill"), legacy->GetCurrentAmmo(), 9);
 
-    AShootingPlayerController* empty = testWorld.CreateController(0);
+    AChapter3_ShooterGame_PlayerController* empty = testWorld.CreateController(0);
     empty->NextWeapon();
     TestFalse(TEXT("Empty loadout cannot equip"), empty->EquipWeaponAtIndex(0));
     TestNull(TEXT("Empty loadout has no actor"), empty->GetCurrentWeapon());

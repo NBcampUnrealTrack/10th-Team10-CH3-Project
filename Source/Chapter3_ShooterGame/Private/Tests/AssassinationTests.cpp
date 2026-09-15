@@ -119,7 +119,7 @@ IMPLEMENT_SIMPLE_AUTOMATION_TEST(FAssassinationSelectionTest, "CH3.Assassination
 bool FAssassinationSelectionTest::RunTest(const FString& parameters)
 {
     FAssassinationTestWorld testWorld = {};
-    AShootingPlayerController* controller = testWorld.world_->SpawnActor<AShootingPlayerController>();
+    AChapter3_ShooterGame_PlayerController* controller = testWorld.world_->SpawnActor<AChapter3_ShooterGame_PlayerController>();
     TestNull(TEXT("빙의 전에는 대상 없음"), controller->FindAssassinationTarget());
     APawn* player = testWorld.CreatePlayer();
     controller->Possess(player);

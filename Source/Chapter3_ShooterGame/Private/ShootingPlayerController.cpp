@@ -45,7 +45,7 @@ namespace
     constexpr float kCoinSpawnDownOffset = 10.0f;
 }
 
-AShootingPlayerController::AShootingPlayerController()
+AChapter3_ShooterGame_PlayerController::AChapter3_ShooterGame_PlayerController()
 {
     OverridePlayerInputClass = UEnhancedPlayerInput::StaticClass();
     fireRange_ = kDefaultFireRange;
@@ -58,7 +58,7 @@ AShootingPlayerController::AShootingPlayerController()
     slowMotionSkill_ = CreateDefaultSubobject<USlowMotionSkillComponent>(TEXT("SlowMotionSkill"));
 }
 
-void AShootingPlayerController::BeginPlay()
+void AChapter3_ShooterGame_PlayerController::BeginPlay()
 {
     // Blueprint의 설정값으로 초기화한 뒤 Blueprint BeginPlay를 실행한다.
     magazineCapacity_ = GetMagazineCapacity();
@@ -67,13 +67,13 @@ void AShootingPlayerController::BeginPlay()
     Super::BeginPlay();
 }
 
-bool AShootingPlayerController::TryActivateSlowMotion()
+bool AChapter3_ShooterGame_PlayerController::TryActivateSlowMotion()
 {
     return IsLocalController() && IsValid(GetPawn()) && slowMotionSkill_
         && slowMotionSkill_->TryActivateSlowMotion();
 }
 
-void AShootingPlayerController::SetupInputComponent()
+void AChapter3_ShooterGame_PlayerController::SetupInputComponent()
 {
     // 프로젝트의 전역 입력 설정과 관계없이 이 컨트롤러는 Enhanced Input을 사용한다.
     if (!InputComponent)
@@ -116,12 +116,12 @@ void AShootingPlayerController::SetupInputComponent()
     inputSubsystem_ = subsystem;
 }
 
-void AShootingPlayerController::BindGameplayInput(UEnhancedInputComponent* enhancedInput)
+void AChapter3_ShooterGame_PlayerController::BindGameplayInput(UEnhancedInputComponent* enhancedInput)
 {
     if (reloadAction_)
     {
         enhancedInput->BindAction(reloadAction_, ETriggerEvent::Started, this,
-            &AShootingPlayerController::StartReload);
+            &AChapter3_ShooterGame_PlayerController::StartReload);
     }
     else
     {
@@ -131,7 +131,7 @@ void AShootingPlayerController::BindGameplayInput(UEnhancedInputComponent* enhan
     if (assassinationAction_)
     {
         enhancedInput->BindAction(assassinationAction_, ETriggerEvent::Started, this,
-            &AShootingPlayerController::HandleAssassinationInput);
+            &AChapter3_ShooterGame_PlayerController::HandleAssassinationInput);
     }
     else
     {
@@ -140,23 +140,23 @@ void AShootingPlayerController::BindGameplayInput(UEnhancedInputComponent* enhan
 
     if (fireAction_)
     {
-        enhancedInput->BindAction(fireAction_, ETriggerEvent::Started, this, &AShootingPlayerController::Fire);
+        enhancedInput->BindAction(fireAction_, ETriggerEvent::Started, this, &AChapter3_ShooterGame_PlayerController::Fire);
     }
 
     if (aimAction_)
     {
-        enhancedInput->BindAction(aimAction_, ETriggerEvent::Started, this, &AShootingPlayerController::StartAiming);
-        enhancedInput->BindAction(aimAction_, ETriggerEvent::Completed, this, &AShootingPlayerController::StopAiming);
-        enhancedInput->BindAction(aimAction_, ETriggerEvent::Canceled, this, &AShootingPlayerController::StopAiming);
+        enhancedInput->BindAction(aimAction_, ETriggerEvent::Started, this, &AChapter3_ShooterGame_PlayerController::StartAiming);
+        enhancedInput->BindAction(aimAction_, ETriggerEvent::Completed, this, &AChapter3_ShooterGame_PlayerController::StopAiming);
+        enhancedInput->BindAction(aimAction_, ETriggerEvent::Canceled, this, &AChapter3_ShooterGame_PlayerController::StopAiming);
     }
 
     if (throwCoinAction_)
     {
-        enhancedInput->BindAction(throwCoinAction_, ETriggerEvent::Started, this, &AShootingPlayerController::ThrowCoin);
+        enhancedInput->BindAction(throwCoinAction_, ETriggerEvent::Started, this, &AChapter3_ShooterGame_PlayerController::ThrowCoin);
     }
 }
 
-void AShootingPlayerController::InitializeWeaponInventory()
+void AChapter3_ShooterGame_PlayerController::InitializeWeaponInventory()
 {
     if (weaponInventoryInitialized_)
     {
@@ -189,17 +189,17 @@ void AShootingPlayerController::InitializeWeaponInventory()
     }
 }
 
-void AShootingPlayerController::NextWeapon()
+void AChapter3_ShooterGame_PlayerController::NextWeapon()
 {
     CycleWeapon(1);
 }
 
-void AShootingPlayerController::PreviousWeapon()
+void AChapter3_ShooterGame_PlayerController::PreviousWeapon()
 {
     CycleWeapon(-1);
 }
 
-void AShootingPlayerController::CycleWeapon(int32 direction)
+void AChapter3_ShooterGame_PlayerController::CycleWeapon(int32 direction)
 {
     InitializeWeaponInventory();
     const int32 count = weaponSlots_.Num();
@@ -218,7 +218,7 @@ void AShootingPlayerController::CycleWeapon(int32 direction)
     }
 }
 
-bool AShootingPlayerController::EquipWeaponAtIndex(int32 weaponIndex)
+bool AChapter3_ShooterGame_PlayerController::EquipWeaponAtIndex(int32 weaponIndex)
 {
     UWorld* world = GetWorld();
     APawn* controlledPawn = GetPawn();
@@ -276,7 +276,7 @@ bool AShootingPlayerController::EquipWeaponAtIndex(int32 weaponIndex)
     return true;
 }
 
-UAssassinationTargetComponent* AShootingPlayerController::FindAssassinationTarget() const
+UAssassinationTargetComponent* AChapter3_ShooterGame_PlayerController::FindAssassinationTarget() const
 {
     const APawn* controlledPawn = GetPawn();
     if (!IsValid(controlledPawn) || !GetWorld() || GetWorld()->IsPaused())
@@ -307,7 +307,7 @@ UAssassinationTargetComponent* AShootingPlayerController::FindAssassinationTarge
     return closestTarget;
 }
 
-bool AShootingPlayerController::TryAssassinate()
+bool AChapter3_ShooterGame_PlayerController::TryAssassinate()
 {
     if (!IsLocalController() || !HasAuthority())
     {
@@ -317,12 +317,12 @@ bool AShootingPlayerController::TryAssassinate()
     return IsValid(target) && target->TryAssassinate(GetPawn());
 }
 
-void AShootingPlayerController::HandleAssassinationInput()
+void AChapter3_ShooterGame_PlayerController::HandleAssassinationInput()
 {
     TryAssassinate();
 }
 
-void AShootingPlayerController::ThrowCoin()
+void AChapter3_ShooterGame_PlayerController::ThrowCoin()
 {
     UWorld* world = GetWorld();
     APawn* controlledPawn = GetPawn();
@@ -381,7 +381,7 @@ void AShootingPlayerController::ThrowCoin()
     }
 }
 
-void AShootingPlayerController::Fire()
+void AChapter3_ShooterGame_PlayerController::Fire()
 {
 
 
@@ -456,7 +456,7 @@ void AShootingPlayerController::Fire()
     }
 }
 
-void AShootingPlayerController::QueueAutomaticReload()
+void AChapter3_ShooterGame_PlayerController::QueueAutomaticReload()
 {
     if (!GetWorld() || reloading_ || GetWorldTimerManager().IsTimerActive(reloadDelayTimer_))
     {
@@ -470,10 +470,10 @@ void AShootingPlayerController::QueueAutomaticReload()
         return;
     }
     GetWorldTimerManager().SetTimer(reloadDelayTimer_, this,
-        &AShootingPlayerController::StartReload, delay, false);
+        &AChapter3_ShooterGame_PlayerController::StartReload, delay, false);
 }
 
-void AShootingPlayerController::StartReload()
+void AChapter3_ShooterGame_PlayerController::StartReload()
 {
     UWorld* world = GetWorld();
     if (!world || world->IsPaused() || !IsLocalController() || !IsValid(GetPawn())
@@ -487,10 +487,10 @@ void AShootingPlayerController::StartReload()
         ? FMath::Max(kMinimumReloadDuration, reloadDuration_) : kDefaultReloadDuration;
     reloading_ = true;
     GetWorldTimerManager().SetTimer(reloadTimer_, this,
-        &AShootingPlayerController::FinishReload, duration, false);
+        &AChapter3_ShooterGame_PlayerController::FinishReload, duration, false);
 }
 
-void AShootingPlayerController::FinishReload()
+void AChapter3_ShooterGame_PlayerController::FinishReload()
 {
     // 예비 탄약 제한은 추후 추가한다. 지금은 장전이 끝날 때마다 탄창을 채운다.
     currentAmmo_ = GetMagazineCapacity();
@@ -501,7 +501,7 @@ void AShootingPlayerController::FinishReload()
     }
 }
 
-float AShootingPlayerController::GetReloadProgress() const
+float AChapter3_ShooterGame_PlayerController::GetReloadProgress() const
 {
     if (!reloading_ || !GetWorld())
     {
@@ -514,7 +514,7 @@ float AShootingPlayerController::GetReloadProgress() const
         ? FMath::Clamp(timerManager.GetTimerElapsed(reloadTimer_) / duration, 0.0f, 1.0f) : 0.0f;
 }
 
-void AShootingPlayerController::ApplyShotDamage(const FHitResult& hitResult, const FVector& shotDirection)
+void AChapter3_ShooterGame_PlayerController::ApplyShotDamage(const FHitResult& hitResult, const FVector& shotDirection)
 {
     AActor* hitActor = hitResult.GetActor();
     if (!hitActor)
@@ -532,7 +532,7 @@ void AShootingPlayerController::ApplyShotDamage(const FHitResult& hitResult, con
         UDamageType::StaticClass());
 }
 
-void AShootingPlayerController::DrawShotDebug(const FVector& start, const FVector& end, const FHitResult& hitResult)
+void AChapter3_ShooterGame_PlayerController::DrawShotDebug(const FVector& start, const FVector& end, const FHitResult& hitResult)
 {
     const FVector traceEnd = hitResult.bBlockingHit ? hitResult.ImpactPoint : end;
     const FColor traceColor = hitResult.bBlockingHit ? FColor::Green : FColor::Red;
@@ -550,7 +550,7 @@ void AShootingPlayerController::DrawShotDebug(const FVector& start, const FVecto
     }
 }
 
-void AShootingPlayerController::EndPlay(const EEndPlayReason::Type endPlayReason)
+void AChapter3_ShooterGame_PlayerController::EndPlay(const EEndPlayReason::Type endPlayReason)
 {
     GetWorldTimerManager().ClearTimer(reloadTimer_);
     GetWorldTimerManager().ClearTimer(reloadDelayTimer_);
@@ -572,23 +572,23 @@ void AShootingPlayerController::EndPlay(const EEndPlayReason::Type endPlayReason
     Super::EndPlay(endPlayReason);
 }
 
-void AShootingPlayerController::StartAiming()
+void AChapter3_ShooterGame_PlayerController::StartAiming()
 {
     aimHeld_ = true;
 }
 
-void AShootingPlayerController::StopAiming()
+void AChapter3_ShooterGame_PlayerController::StopAiming()
 {
     aimHeld_ = false;
 }
 
-void AShootingPlayerController::FlushPressedKeys()
+void AChapter3_ShooterGame_PlayerController::FlushPressedKeys()
 {
     Super::FlushPressedKeys();
     StopAiming();
 }
 
-void AShootingPlayerController::UpdateCameraManager(float deltaSeconds)
+void AChapter3_ShooterGame_PlayerController::UpdateCameraManager(float deltaSeconds)
 {
     Super::UpdateCameraManager(deltaSeconds);
 

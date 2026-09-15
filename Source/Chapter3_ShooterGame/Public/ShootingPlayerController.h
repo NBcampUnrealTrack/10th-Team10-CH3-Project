@@ -34,12 +34,12 @@ DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnCoinThrown, ADistractionCoin*, co
 
 // 화면 중앙을 기준으로 단발 사격을 처리하는 플레이어 컨트롤러.
 UCLASS()
-class CHAPTER3_SHOOTERGAME_API AShootingPlayerController : public APlayerController
+class CHAPTER3_SHOOTERGAME_API AChapter3_ShooterGame_PlayerController : public APlayerController
 {
 	GENERATED_BODY()
 
 public:
-    AShootingPlayerController();
+    AChapter3_ShooterGame_PlayerController();
 
     UFUNCTION(BlueprintCallable, Category = "Shooting")
     void Fire();
