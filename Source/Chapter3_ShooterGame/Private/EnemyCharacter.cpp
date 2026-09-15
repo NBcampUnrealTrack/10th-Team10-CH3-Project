@@ -150,7 +150,7 @@ void AEnemyCharacter::BeginPlay()
 		sightRadius_ = enemyAIController->GetSightRadius();
 	}
 
-	GetWorldTimerManager().SetTimer(EnemyStateUpdateTimer_, this, &AEnemyCharacter::AlertCalculation, 0.5f, true);
+	GetWorldTimerManager().SetTimer(EnemyStateUpdateTimer_, this, &AEnemyCharacter::AlertCalculation, 0.25f, true);
 }
 float AEnemyCharacter::TakeDamage(float DamageAmount, struct FDamageEvent const& DamageEvent, AController* EventInstigator, AActor* DamageCauser)
 {
