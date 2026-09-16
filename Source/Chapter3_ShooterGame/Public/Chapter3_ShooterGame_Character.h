@@ -54,6 +54,11 @@ public:
 	// 데미지를 입었을 때 엔진에서 호출 (ApplyDamage 계열 함수와 연동됨)
 	virtual float TakeDamage(float DamageAmount, struct FDamageEvent const& DamageEvent, class AController* EventInstigator, AActor* DamageCauser) override;
 
+	// TakeDamage 이 함수로 조회
+	// ApplyDamage 함수 호출 직후 바로 확인하면 "이번 공격으로 죽었는지"를 알수있음
+	UFUNCTION(BlueprintPure, Category = "Health")
+	bool IsDead() const { return bIsDead; }
+
 	// bAim = true면 정조준 시작, false면 정조준 해제 (우클릭)
 	void SetAiming(bool bAim);
 
@@ -70,7 +75,7 @@ protected:
 	void UpdateLean(float DeltaTime);
 	float CalculateSafeLeanAlpha(float DesiredAlpha) const;
 
-	// SetLean으로 들어온 -1~1 사이의 목표값
+	// SetLean으로 들어온 -1~1 사이값
 	float TargetLeanValue = 0.f;
 
 	// 생성 시점의 카메라 로컬 위치 
@@ -123,7 +128,7 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Lean")
 	float LeanSideOffset = 40.f;
 
-	// 기울일 때 카메라가 살짝 낮아지는 정도
+	// 기울일 때 카메라가 살짝 낮아지는 정도 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Lean")
 	float LeanHeightDrop = 8.f;
 
@@ -131,7 +136,7 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Lean")
 	float LeanInterpSpeed = 8.f;
 
-	// 기울임 각도
+
 	UPROPERTY(BlueprintReadOnly, Category = "Lean")
 	float CurrentLeanValue = 0.f;
 

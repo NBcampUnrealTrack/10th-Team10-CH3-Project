@@ -711,6 +711,14 @@ void AChapter3_ShooterGame_PlayerController::ApplyShotDamage(const FHitResult& h
         this,
         GetPawn(),
         UDamageType::StaticClass());
+
+    if (AChapter3_ShooterGame_Character* hitCharacter = Cast<AChapter3_ShooterGame_Character>(hitActor))
+    {
+        if (hitCharacter->IsDead())
+        {
+           
+        }
+    }
 }
 
 void AChapter3_ShooterGame_PlayerController::DrawShotDebug(const FVector& start, const FVector& end, const FHitResult& hitResult)
