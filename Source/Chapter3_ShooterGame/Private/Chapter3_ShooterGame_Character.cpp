@@ -36,6 +36,9 @@ AChapter3_ShooterGame_Character::AChapter3_ShooterGame_Character()
 
 	// 전신 메쉬
 	GetMesh()->SetOwnerNoSee(true);
+
+	// 체력 초기화
+	CurrentHealth = MaxHealth;
 }
 
 void AChapter3_ShooterGame_Character::BeginPlay()
@@ -194,6 +197,29 @@ void AChapter3_ShooterGame_Character::StartFire()
 
 void AChapter3_ShooterGame_Character::StopFire()
 {
+}
+
+float AChapter3_ShooterGame_Character::TakeDamage(float DamageAmount, FDamageEvent const& DamageEvent, AController* EventInstigator, AActor* DamageCauser)
+{
+	const float ActualDamage = Super::TakeDamage(DamageAmount, DamageEvent, EventInstigator, DamageCauser);
+
+	// 이미 죽었거나 데미지가 0 이하면 처리하지 않음
+	if (bIsDead || ActualDamage <= 0.f)
+	{
+		return ActualDamage;
+	}
+
+	CurrentHealth = FMath::Clamp(CurrentHealth - ActualDamage, 0.f, MaxHealth);
+
+	OnDamaged(ActualDamage, CurrentHealth);
+
+	if (CurrentHealth <= 0.f)
+	{
+		bIsDead = true;
+		OnDeath();
+	}
+
+	return ActualDamage;
 }
 
 void AChapter3_ShooterGame_Character::SetAiming(bool bAim)

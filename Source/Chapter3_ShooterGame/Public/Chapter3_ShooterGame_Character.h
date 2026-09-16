@@ -51,6 +51,9 @@ public:
 	void StartFire();
 	void StopFire();
 
+	// 데미지를 입었을 때 엔진에서 호출 (ApplyDamage 계열 함수와 연동됨)
+	virtual float TakeDamage(float DamageAmount, struct FDamageEvent const& DamageEvent, class AController* EventInstigator, AActor* DamageCauser) override;
+
 	// bAim = true면 정조준 시작, false면 정조준 해제 (우클릭)
 	void SetAiming(bool bAim);
 
@@ -93,6 +96,18 @@ public:
 	UPROPERTY(BlueprintReadOnly, Category = "Combat")
 	bool bIsAiming = false;
 
+	// 최대 체력
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Health")
+	float MaxHealth = 100.f;
+
+	// 현재 체력 (생성자에서 MaxHealth로 초기화됨)
+	UPROPERTY(BlueprintReadOnly, Category = "Health")
+	float CurrentHealth = 0.f;
+
+	// 사망 여부
+	UPROPERTY(BlueprintReadOnly, Category = "Health")
+	bool bIsDead = false;
+
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Lean")
 	float LeanAngle = 15.f;
 
@@ -122,4 +137,12 @@ public:
 
 	UFUNCTION(BlueprintImplementableEvent, Category = "Parkour")
 	void OnCrawlStart();
+
+	// 데미지를 입었을 때 블루프린트에서 처리 (예: 피격 이펙트, UI 갱신)
+	UFUNCTION(BlueprintImplementableEvent, Category = "Health")
+	void OnDamaged(float DamageAmount, float NewCurrentHealth);
+
+	// 체력이 0 이하가 되어 사망했을 때 블루프린트에서 처리
+	UFUNCTION(BlueprintImplementableEvent, Category = "Health")
+	void OnDeath();
 };
