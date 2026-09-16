@@ -13,6 +13,8 @@ class USkeletalMesh;
 class UStaticMesh;
 class UMaterialInterface;
 class UWeaponAttachmentComponent;
+class USoundBase;
+class UAudioComponent;
 
 // 카메라 앞의 총 표시와 조준/반동/장전 모션을 담당한다. 명중 판정과 탄약은 컨트롤러가 담당한다.
 UCLASS()
@@ -29,6 +31,9 @@ public:
 
     UFUNCTION(BlueprintCallable, Category = "Weapon View")
     void PlayFireFeedback();
+
+    UFUNCTION(BlueprintCallable, Category = "Weapon View|Audio")
+    void SetUseSuppressedFireSound(bool useSuppressedFireSound);
 
     void SetReloadState(bool isReloading, float progress);
 
@@ -61,6 +66,15 @@ protected:
 
     UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Weapon View|Assets")
     TObjectPtr<UMaterialInterface> muzzleFlashMaterial_ = nullptr;
+
+    UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = "Weapon View|Audio")
+    TObjectPtr<USoundBase> fireSound_ = nullptr;
+
+    UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = "Weapon View|Audio")
+    TObjectPtr<USoundBase> suppressedFireSound_ = nullptr;
+
+    UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = "Weapon View|Audio")
+    TObjectPtr<USoundBase> reloadSound_ = nullptr;
 
     UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = "Weapon View|Pose")
     FVector hipLocation_ = FVector::ZeroVector;
@@ -105,10 +119,14 @@ private:
     UPROPERTY(VisibleAnywhere, Category = "Weapon View")
     TObjectPtr<UPointLightComponent> muzzleLight_ = nullptr;
 
+    UPROPERTY(Transient)
+    TObjectPtr<UAudioComponent> reloadAudioComponent_ = nullptr;
+
     float aimAlpha_ = 0.0f;
     float shotElapsed_ = 0.0f;
     float recoilWeight_ = 0.0f;
     float reloadProgress_ = 0.0f;
     bool isReloading_ = false;
+    bool useSuppressedFireSound_ = false;
     FTransform magazineRestTransform_ = FTransform::Identity;
 };

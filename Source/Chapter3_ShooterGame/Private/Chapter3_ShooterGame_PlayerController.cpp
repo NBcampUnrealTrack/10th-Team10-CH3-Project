@@ -9,6 +9,7 @@
 #include "AssassinationTargetComponent.h"
 #include "EngineUtils.h"
 #include "Camera/PlayerCameraManager.h"
+#include "Components/PrimitiveComponent.h"
 
 #include "DrawDebugHelpers.h"
 #include "Engine/LocalPlayer.h"
@@ -38,9 +39,6 @@ namespace
     constexpr float kDefaultCoinThrowSpeed = 1000.0f;
     constexpr float kDefaultCoinUpwardSpeed = 300.0f;
     constexpr float kDefaultCoinThrowInterval = 0.6f;
-    constexpr float kCoinSpawnForwardOffset = 45.0f;
-    constexpr float kCoinSpawnRightOffset = 12.0f;
-    constexpr float kCoinSpawnDownOffset = 10.0f;
 }
 
 AChapter3_ShooterGame_PlayerController::AChapter3_ShooterGame_PlayerController()
@@ -66,11 +64,15 @@ AChapter3_ShooterGame_PlayerController::AChapter3_ShooterGame_PlayerController()
 	coinUpwardSpeed_ = kDefaultCoinUpwardSpeed;
 	coinThrowInterval_ = kDefaultCoinThrowInterval;
 	slowMotionSkill_ = CreateDefaultSubobject<USlowMotionSkillComponent>(TEXT("SlowMotionSkill"));
+    coinThrowSkill_ = CreateDefaultSubobject<UCoinThrowSkillComponent>(TEXT("CoinThrowSkill"));
 
 };
 
 void AChapter3_ShooterGame_PlayerController::BeginPlay()
 {
+    coinThrowSkill_->InitializeFromLegacySettings(coinClass_, coinThrowSpeed_, coinUpwardSpeed_, coinThrowInterval_);
+    coinThrowSkill_->onCoinThrown_.AddUniqueDynamic(this, &AChapter3_ShooterGame_PlayerController::ForwardCoinThrown);
+
     magazineCapacity_ = GetMagazineCapacity();
     currentAmmo_ = magazineCapacity_;
     InitializeWeaponInventory();
@@ -425,6 +427,7 @@ bool AChapter3_ShooterGame_PlayerController::EquipWeaponAtIndex(int32 weaponInde
     }
     equippedWeaponIndex_ = weaponIndex;
     weaponView_ = nextSlot.instance_;
+    coinThrowSkill_->SetIgnoredWeapon(weaponView_);
     currentAmmo_ = FMath::Clamp(nextSlot.ammo_, 0, GetMagazineCapacity());
     weaponView_->SetOwner(controlledPawn);
     weaponView_->SetInstigator(controlledPawn);
@@ -520,26 +523,16 @@ void AChapter3_ShooterGame_PlayerController::ThrowCoin()
     FHitResult obstruction = {};
     if (world->SweepSingleByChannel(obstruction, viewLocation, spawnLocation,
         FQuat::Identity, ECC_WorldDynamic, collisionShape, queryParams))
+      
+    if (coinThrowSkill_)
     {
-        return;
+        coinThrowSkill_->TryThrowCoin();
     }
+}
 
-    FActorSpawnParameters spawnParams = {};
-    spawnParams.Owner = controlledPawn;
-    spawnParams.Instigator = controlledPawn;
-    spawnParams.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::DontSpawnIfColliding;
-    ADistractionCoin* coin = world->SpawnActor<ADistractionCoin>(coinClass_, spawnLocation, viewRotation, spawnParams);
-    if (!IsValid(coin))
-    {
-        return;
-    }
-
-    nextCoinThrowTime_ = currentTime + FMath::Max(0.0f, coinThrowInterval_);
+void AChapter3_ShooterGame_PlayerController::ForwardCoinThrown(ADistractionCoin* coin)
+{
     onCoinThrown_.Broadcast(coin);
-    if (IsValid(coin))
-    {
-        coin->LaunchCoin(throwDirection * coinThrowSpeed_ + FVector::UpVector * coinUpwardSpeed_);
-    }
 }
 
 void AChapter3_ShooterGame_PlayerController::Fire()
