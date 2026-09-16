@@ -1,4 +1,4 @@
-#pragma once
+ï»¿#pragma once
 
 #include "CoreMinimal.h"
 #include "GameFramework/PlayerController.h"
@@ -89,7 +89,7 @@ protected:
     UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Shooting|Weapon")
     TSubclassOf<AM1911WeaponView> weaponViewClass_ = nullptr;
 
-    // ÈÙ ¼ø¼­´ë·Î ÃÑ BP¸¦ ÁöÁ¤ÇÑ´Ù. ºñ¾î ÀÖÀ¸¸é ±âÁ¸ Weapon View Class ÇÏ³ª¸¦ »ç¿ëÇÑ´Ù.
+    // íœ  ìˆœì„œëŒ€ë¡œ ì´ BPë¥¼ ì§€ì •í•œë‹¤. ë¹„ì–´ ìˆìœ¼ë©´ ê¸°ì¡´ Weapon View Class í•˜ë‚˜ë¥¼ ì‚¬ìš©í•œë‹¤.
     UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Shooting|Weapon")
     TArray<TSubclassOf<AM1911WeaponView>> weaponViewClasses_ = {};
 
@@ -235,7 +235,7 @@ public:
     UFUNCTION(BlueprintPure, Category = "BackAttack")
     UAssassinationTargetComponent* FindAssassinationTarget() const;
 
-    // »ı¼º Á÷ÈÄ È£ÃâµÈ´Ù. ¿©±â¼­ coinÀÇ onCoinLanded_¿¡ ¹ÙÀÎµùÇÒ ¼ö ÀÖ´Ù.
+    // ìƒì„± ì§í›„ í˜¸ì¶œëœë‹¤. ì—¬ê¸°ì„œ coinì˜ onCoinLanded_ì— ë°”ì¸ë”©í•  ìˆ˜ ìˆë‹¤.
     UPROPERTY(BlueprintAssignable, Category = "Coin")
     FOnCoinThrown onCoinThrown_;
 
