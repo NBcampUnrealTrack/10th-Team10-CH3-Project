@@ -1,4 +1,5 @@
-﻿#include "EnemyCharacter.h"
+﻿#include "MainGameState.h"
+#include "EnemyCharacter.h"
 #include "EnemyAIController.h"
 #include "Kismet/GameplayStatics.h"
 //#include "PhysicalMaterials/PhysicalMaterial.h"
@@ -178,6 +179,10 @@ void AEnemyCharacter::StartFire(void) {
 }
 void AEnemyCharacter::OnDeath(void) {
 	//적 AI 사망 정보 GameState에 전송해야 함!
+	if (AMainGameState* mainGameState = GetWorld()->GetGameState<AMainGameState>())
+	{
+		mainGameState->SetPlayerKillCount(mainGameState->GetPlayerKillCount() + 1);
+	}
 
 	//적 AI 사망 로직 구현
 	DestroyEnemy();
