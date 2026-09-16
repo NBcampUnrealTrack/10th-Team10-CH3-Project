@@ -1,6 +1,7 @@
 #include "M1911WeaponView.h"
 #include "WeaponAttachmentComponent.h"
 
+#include "Components/AudioComponent.h"
 #include "Components/PointLightComponent.h"
 #include "Components/PoseableMeshComponent.h"
 #include "Components/SceneComponent.h"
@@ -8,6 +9,8 @@
 #include "Components/StaticMeshComponent.h"
 #include "Engine/SkeletalMesh.h"
 #include "Engine/StaticMesh.h"
+#include "Kismet/GameplayStatics.h"
+#include "Sound/SoundBase.h"
 #include "Materials/MaterialInterface.h"
 #include "Materials/MaterialInstanceDynamic.h"
 #include "Math/RotationMatrix.h"
@@ -175,6 +178,22 @@ void AM1911WeaponView::SetReloadState(bool isReloading, float progress)
         {
             reloadMesh_->SetMaterial(materialIndex, gunMesh_->GetMaterial(materialIndex));
         }
+
+        // 매 프레임 호출되어도 장전 시작 시 한 번만 재생한다.
+        if (IsValid(reloadSound_))
+        {
+            reloadAudioComponent_ = UGameplayStatics::SpawnSoundAttached(
+                reloadSound_, gunMesh_, NAME_None, FVector::ZeroVector,
+                EAttachLocation::KeepRelativeOffset, true);
+        }
+    }
+    else if (!isReloading && isReloading_)
+    {
+        if (IsValid(reloadAudioComponent_))
+        {
+            reloadAudioComponent_->Stop();
+        }
+        reloadAudioComponent_ = nullptr;
     }
 
     isReloading_ = isReloading;
@@ -238,6 +257,21 @@ void AM1911WeaponView::PlayFireFeedback()
     shotElapsed_ = 0.0f;
     muzzleFlash_->SetVisibility(true);
     muzzleLight_->SetVisibility(true);
+
+    // 소음기 음원이 미지정이면 일반 발사음을 사용한다.
+    USoundBase* shotSound = useSuppressedFireSound_ && IsValid(suppressedFireSound_)
+        ? suppressedFireSound_.Get() : fireSound_.Get();
+    if (IsValid(shotSound))
+    {
+        UGameplayStatics::SpawnSoundAttached(
+            shotSound, gunMesh_, NAME_None, FVector::ZeroVector,
+            EAttachLocation::KeepRelativeOffset, true);
+    }
+}
+
+void AM1911WeaponView::SetUseSuppressedFireSound(bool useSuppressedFireSound)
+{
+    useSuppressedFireSound_ = useSuppressedFireSound;
 }
 
 void AM1911WeaponView::UpdateFireFeedback(float deltaTime)
