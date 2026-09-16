@@ -597,6 +597,7 @@ void AChapter3_ShooterGame_PlayerController::Fire()
     TArray<AActor*> attachedActors = {};
     controlledPawn->GetAttachedActors(attachedActors, true, true);
     queryParams.AddIgnoredActors(attachedActors);
+    queryParams.bReturnPhysicalMaterial = true;
 
     FHitResult hitResult = {};
     world->LineTraceSingleByChannel(hitResult, start, end, ECC_Visibility, queryParams);
@@ -681,6 +682,25 @@ void AChapter3_ShooterGame_PlayerController::ApplyShotDamage(const FHitResult& h
     if (!hitActor)
     {
         return;
+    }
+
+    // 부위에 맞는 데미지 적용 구현 필요
+    if (hitResult.PhysMaterial.IsValid())
+    {
+        EPhysicalSurface SurfaceType = hitResult.PhysMaterial->SurfaceType;
+
+        switch (SurfaceType)
+        {
+        case SurfaceType1: // Head
+            damage_ = kDefaultDamage * 5.0f;
+            break;
+        case SurfaceType3: // BodyRear
+            damage_ = kDefaultDamage * 0.5f;
+            break;
+        default:
+            damage_ = kDefaultDamage;
+            break;
+        }
     }
 
     UGameplayStatics::ApplyPointDamage(
