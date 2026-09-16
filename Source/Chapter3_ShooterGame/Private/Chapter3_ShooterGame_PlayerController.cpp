@@ -488,42 +488,6 @@ void AChapter3_ShooterGame_PlayerController::HandleAssassinationInput()
 
 void AChapter3_ShooterGame_PlayerController::ThrowCoin()
 {
-    UWorld* world = GetWorld();
-    APawn* controlledPawn = GetPawn();
-    if (!world || !IsValid(controlledPawn) || !IsLocalController() || !HasAuthority()
-        || world->IsPaused() || !coinClass_ || coinThrowSpeed_ <= 0.0f)
-    {
-        return;
-    }
-
-    const double currentTime = world->GetTimeSeconds();
-    if (currentTime < nextCoinThrowTime_)
-    {
-        return;
-    }
-
-    FVector viewLocation = FVector::ZeroVector;
-    FRotator viewRotation = FRotator::ZeroRotator;
-    GetPlayerViewPoint(viewLocation, viewRotation);
-    const FVector throwDirection = viewRotation.Vector();
-    const FVector spawnLocation = viewLocation + viewRotation.RotateVector(
-        FVector(kCoinSpawnForwardOffset, kCoinSpawnRightOffset, -kCoinSpawnDownOffset));
-
-    FCollisionQueryParams queryParams(SCENE_QUERY_STAT(CoinSpawn), false);
-    queryParams.AddIgnoredActor(this);
-    queryParams.AddIgnoredActor(controlledPawn);
-    queryParams.AddIgnoredActor(weaponView_);
-    TArray<AActor*> attachedActors = {};
-    controlledPawn->GetAttachedActors(attachedActors, true, true);
-    queryParams.AddIgnoredActors(attachedActors);
-
-    // 카메라와 생성 위치 사이의 벽을 검사해 벽 너머에서 코인이 생성되는 것을 막는다.
-    const ADistractionCoin* defaultCoin = coinClass_.GetDefaultObject();
-    const FCollisionShape collisionShape = FCollisionShape::MakeSphere(defaultCoin->GetCollisionRadius());
-    FHitResult obstruction = {};
-    if (world->SweepSingleByChannel(obstruction, viewLocation, spawnLocation,
-        FQuat::Identity, ECC_WorldDynamic, collisionShape, queryParams))
-      
     if (coinThrowSkill_)
     {
         coinThrowSkill_->TryThrowCoin();
