@@ -1,4 +1,4 @@
-#include "Chapter3_ShooterGame_PlayerController.h"
+ï»¿#include "Chapter3_ShooterGame_PlayerController.h"
 #include "Chapter3_ShooterGame_Character.h"
 #include "EnhancedInputComponent.h"
 #include "EnhancedInputSubsystems.h"
@@ -112,7 +112,7 @@ void AChapter3_ShooterGame_PlayerController::SetupInputComponent()
 		EnhancedInputComponent->BindAction(LeanAction, ETriggerEvent::Completed, this, &AChapter3_ShooterGame_PlayerController::HandleLean);
 	}
 
-    // ÇÁ·ÎÁ§Æ®ÀÇ Àü¿ª ÀÔ·Â ¼³Á¤°ú °ü°è¾øÀÌ ÀÌ ÄÁÆ®·Ñ·¯´Â Enhanced InputÀ» »ç¿ëÇÑ´Ù.
+    // í”„ë¡œì íŠ¸ì˜ ì „ì—­ ì…ë ¥ ì„¤ì •ê³¼ ê´€ê³„ì—†ì´ ì´ ì»¨íŠ¸ë¡¤ëŸ¬ëŠ” Enhanced Inputì„ ì‚¬ìš©í•œë‹¤.
     if (!InputComponent)
     {
         InputComponent = NewObject<UEnhancedInputComponent>(this, TEXT("ShootingInputComponent"));
@@ -146,7 +146,7 @@ void AChapter3_ShooterGame_PlayerController::SetupInputComponent()
 
     BindGameplayInput(enhancedInput);
 
-    // ´Ù¸¥ ÀÌµ¿/½ÃÁ¡ ¸ÅÇÎÀº À¯ÁöÇÏ°í »ç°İ¿ë ¸ÅÇÎ¸¸ µî·ÏÇÑ´Ù.
+    // ë‹¤ë¥¸ ì´ë™/ì‹œì  ë§¤í•‘ì€ ìœ ì§€í•˜ê³  ì‚¬ê²©ìš© ë§¤í•‘ë§Œ ë“±ë¡í•œë‹¤.
     subsystem->AddMappingContext(inputMappingContext_, kFireMappingPriority);
     inputSubsystem_ = subsystem;
 }
@@ -287,7 +287,7 @@ void AChapter3_ShooterGame_PlayerController::BindGameplayInput(UEnhancedInputCom
     }
     else
     {
-        UE_LOG(LogShooting, Warning, TEXT("ÄÁÆ®·Ñ·¯ Blueprint¿¡ ÀåÀü Input ActionÀ» ÁöÁ¤ÇÏ¼¼¿ä."));
+        UE_LOG(LogShooting, Warning, TEXT("ì»¨íŠ¸ë¡¤ëŸ¬ Blueprintì— ì¥ì „ Input Actionì„ ì§€ì •í•˜ì„¸ìš”."));
     }
 
     if (assassinationAction_)
@@ -297,7 +297,7 @@ void AChapter3_ShooterGame_PlayerController::BindGameplayInput(UEnhancedInputCom
     }
     else
     {
-        UE_LOG(LogShooting, Warning, TEXT("ÄÁÆ®·Ñ·¯ Blueprint¿¡ ¾Ï»ì Input ActionÀ» ÁöÁ¤ÇÏ¼¼¿ä."));
+        UE_LOG(LogShooting, Warning, TEXT("ì»¨íŠ¸ë¡¤ëŸ¬ Blueprintì— ì•”ì‚´ Input Actionì„ ì§€ì •í•˜ì„¸ìš”."));
     }
 
     if (fireAction_)
@@ -369,7 +369,7 @@ void AChapter3_ShooterGame_PlayerController::CycleWeapon(int32 direction)
     {
         return;
     }
-    // »ı¼ºÇÒ ¼ö ¾ø´Â ½½·ÔÀº °Ç³Ê¶ÙµÇ ÇöÀç ÃÑÀº ±×´ë·Î À¯ÁöÇÑ´Ù.
+    // ìƒì„±í•  ìˆ˜ ì—†ëŠ” ìŠ¬ë¡¯ì€ ê±´ë„ˆë›°ë˜ í˜„ì¬ ì´ì€ ê·¸ëŒ€ë¡œ ìœ ì§€í•œë‹¤.
     for (int32 step = 1; step < count; ++step)
     {
         const int32 nextIndex = (equippedWeaponIndex_ + direction * step + count) % count;
@@ -416,7 +416,7 @@ bool AChapter3_ShooterGame_PlayerController::EquipWeaponAtIndex(int32 weaponInde
     {
         weaponSlots_[equippedWeaponIndex_].ammo_ = currentAmmo_;
     }
-    // ÀÌÀü ÃÑÀÇ ÀåÀü Å¸ÀÌ¸Ó°¡ »õ ÃÑÀÇ Åº¾àÀ» Ã¤¿ìÁö ¾Ê°Ô Ãë¼ÒÇÑ´Ù.
+    // ì´ì „ ì´ì˜ ì¥ì „ íƒ€ì´ë¨¸ê°€ ìƒˆ ì´ì˜ íƒ„ì•½ì„ ì±„ìš°ì§€ ì•Šê²Œ ì·¨ì†Œí•œë‹¤.
     GetWorldTimerManager().ClearTimer(reloadTimer_);
     GetWorldTimerManager().ClearTimer(reloadDelayTimer_);
     reloading_ = false;
@@ -521,7 +521,7 @@ void AChapter3_ShooterGame_PlayerController::ThrowCoin()
     controlledPawn->GetAttachedActors(attachedActors, true, true);
     queryParams.AddIgnoredActors(attachedActors);
 
-    // Ä«¸Ş¶ó¿Í »ı¼º À§Ä¡ »çÀÌÀÇ º®À» °Ë»çÇØ º® ³Ê¸Ó¿¡¼­ ÄÚÀÎÀÌ »ı¼ºµÇ´Â °ÍÀ» ¸·´Â´Ù.
+    // ì¹´ë©”ë¼ì™€ ìƒì„± ìœ„ì¹˜ ì‚¬ì´ì˜ ë²½ì„ ê²€ì‚¬í•´ ë²½ ë„ˆë¨¸ì—ì„œ ì½”ì¸ì´ ìƒì„±ë˜ëŠ” ê²ƒì„ ë§‰ëŠ”ë‹¤.
     const ADistractionCoin* defaultCoin = coinClass_.GetDefaultObject();
     const FCollisionShape collisionShape = FCollisionShape::MakeSphere(defaultCoin->GetCollisionRadius());
     FHitResult obstruction = {};
@@ -600,7 +600,7 @@ void AChapter3_ShooterGame_PlayerController::Fire()
         weaponView_->PlayFireFeedback();
     }
 
-    // Ä«¸Ş¶ó À§Ä¡¿¡¼­ Á¶ÁØ ¹æÇâÀ¸·Î °Ë»çÇÑ´Ù. ½ÇÁ¦ Åõ»çÃ¼¸¦ »ı¼ºÇÏÁö ¾Ê´Â ¹æ½ÄÀÌ´Ù.
+    // ì¹´ë©”ë¼ ìœ„ì¹˜ì—ì„œ ì¡°ì¤€ ë°©í–¥ìœ¼ë¡œ ê²€ì‚¬í•œë‹¤. ì‹¤ì œ íˆ¬ì‚¬ì²´ë¥¼ ìƒì„±í•˜ì§€ ì•ŠëŠ” ë°©ì‹ì´ë‹¤.
     FVector start = FVector::ZeroVector;
     FRotator viewRotation = FRotator::ZeroRotator;
     GetPlayerViewPoint(start, viewRotation);
@@ -613,7 +613,7 @@ void AChapter3_ShooterGame_PlayerController::Fire()
     queryParams.AddIgnoredActor(controlledPawn);
     queryParams.AddIgnoredActor(weaponView_);
 
-    // Ä³¸¯ÅÍ¿¡ ºÎÂøµÈ ÃÑ µîÀÇ ¾×ÅÍµµ ÀÚ±â ÀÚ½Å¿¡ ¸ÂÁö ¾Êµµ·Ï Á¦¿ÜÇÑ´Ù.
+    // ìºë¦­í„°ì— ë¶€ì°©ëœ ì´ ë“±ì˜ ì•¡í„°ë„ ìê¸° ìì‹ ì— ë§ì§€ ì•Šë„ë¡ ì œì™¸í•œë‹¤.
     TArray<AActor*> attachedActors = {};
     controlledPawn->GetAttachedActors(attachedActors, true, true);
     queryParams.AddIgnoredActors(attachedActors);
@@ -673,7 +673,7 @@ void AChapter3_ShooterGame_PlayerController::StartReload()
 
 void AChapter3_ShooterGame_PlayerController::FinishReload()
 {
-    // ¿¹ºñ Åº¾à Á¦ÇÑÀº ÃßÈÄ Ãß°¡ÇÑ´Ù. Áö±İÀº ÀåÀüÀÌ ³¡³¯ ¶§¸¶´Ù ÅºÃ¢À» Ã¤¿î´Ù.
+    // ì˜ˆë¹„ íƒ„ì•½ ì œí•œì€ ì¶”í›„ ì¶”ê°€í•œë‹¤. ì§€ê¸ˆì€ ì¥ì „ì´ ëë‚  ë•Œë§ˆë‹¤ íƒ„ì°½ì„ ì±„ìš´ë‹¤.
     currentAmmo_ = GetMagazineCapacity();
     reloading_ = false;
     if (IsValid(weaponView_))
@@ -801,7 +801,7 @@ void AChapter3_ShooterGame_PlayerController::UpdateCameraManager(float deltaSeco
         weaponView_->SetOwner(controlledPawn);
         weaponView_->SetWeaponEquipped(true);
 
-        // Ä«¸Ş¶ó °»½Å ÈÄ °°Àº ÇÁ·¹ÀÓÀÇ À§Ä¡¸¦ »ç¿ëÇØ ÀÌµ¿/È¸Àü Áß ÃÑÀÌ µÚÃ³ÁöÁö ¾Ê°Ô ÇÑ´Ù.
+        // ì¹´ë©”ë¼ ê°±ì‹  í›„ ê°™ì€ í”„ë ˆì„ì˜ ìœ„ì¹˜ë¥¼ ì‚¬ìš©í•´ ì´ë™/íšŒì „ ì¤‘ ì´ì´ ë’¤ì²˜ì§€ì§€ ì•Šê²Œ í•œë‹¤.
         FMinimalViewInfo viewInfo = PlayerCameraManager->GetCameraCacheView();
         viewInfo.bUseFirstPersonParameters = true;
         viewInfo.FirstPersonFOV = viewInfo.FOV;
