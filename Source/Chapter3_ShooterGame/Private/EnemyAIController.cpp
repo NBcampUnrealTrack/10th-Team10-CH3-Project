@@ -51,8 +51,6 @@ void AEnemyAIController::OnPerceptionUpdated(AActor* Actor, FAIStimulus Stimulus
 {
 	if (Stimulus.WasSuccessfullySensed())
 	{
-		GEngine->AddOnScreenDebugMessage(-1, 1.0f, FColor::Green, FString::Printf(TEXT("CapturedPlayer!")));
-
 		//적 AI가 플레이어를 감지했을 때
 		isCaptured_ = true;
 		GetWorldTimerManager().ClearTimer(enemyBehaviorTimer_);
@@ -62,7 +60,7 @@ void AEnemyAIController::OnPerceptionUpdated(AActor* Actor, FAIStimulus Stimulus
 	{
 		//적 AI가 플레이어를 감지하지 못했을 때
 		isCaptured_ = false;
-		GetWorldTimerManager().SetTimer(enemyBehaviorTimer_, this, &AEnemyAIController::MoveToRandomLocation, 2.0f, true);
+		GetWorldTimerManager().SetTimer(enemyBehaviorTimer_, this, &AEnemyAIController::MoveToRandomLocation, FMath::FRandRange(2.0f, 3.5f), true);
 		//ClearFocus(EAIFocusPriority::Gameplay);
 	}
 }
@@ -80,7 +78,7 @@ void AEnemyAIController::BeginPlay()
 		AIPerception->OnTargetPerceptionUpdated.AddDynamic(this, &AEnemyAIController::OnPerceptionUpdated);
 	}
 
-	GetWorldTimerManager().SetTimer(enemyBehaviorTimer_, this, &AEnemyAIController::MoveToRandomLocation, 2.0f, true);
+	GetWorldTimerManager().SetTimer(enemyBehaviorTimer_, this, &AEnemyAIController::MoveToRandomLocation, FMath::FRandRange(2.0f, 3.5f), true);
 }
 void AEnemyAIController::OnPossess(APawn* InPawn)
 {
