@@ -27,6 +27,10 @@ public:
     UPROPERTY(BlueprintAssignable, Category = "Score")
     FOnScoreChangedSignature on_score_changed_;
 
+    // --- 적 AI가 플레이어를 감지하여 타이머 호출 ---
+    UFUNCTION(BlueprintCallable, Category = "Mission")
+    void ReportPlayerDetected();
+
     // ==========================================
     // 임시 함수 사용 (접두어 통일: Dummy_)
     // ==========================================
@@ -36,9 +40,6 @@ public:
 
     UFUNCTION(BlueprintCallable, Category = "TeamDummy")
     void Dummy_ReceiveEnemyEliminated();
-
-    UFUNCTION(BlueprintCallable, Category = "TeamDummy")
-    void Dummy_ReceivePlayerDetected();
 
     UFUNCTION(BlueprintCallable, Category = "TeamDummy")
     void Dummy_ReceivePlayerEscaped();
@@ -56,6 +57,9 @@ public:
 private:
     void ProcessGameOver(const FString& fail_reason);
     void ProcessGameVictory(const FString& victory_reason);
+
+    // --- 적 AI에게 발각 되었는지 상태 확인용 검사 함수 ---
+    void CheckPlayerDetectionFromAI();
 
     // --- 상태 변수 ---
     UPROPERTY(VisibleAnywhere, Category = "Mission")
