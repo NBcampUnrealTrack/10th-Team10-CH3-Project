@@ -253,7 +253,7 @@ void AChapter3_ShooterGame_Character::UseSkill2()
 
 void AChapter3_ShooterGame_Character::SetLean(float LeanValue)
 {
-	// -1(왼쪽) ~ 1(오른쪽) 범위로 클램프만 하고, 실제 보간/적용은 Tick(UpdateLean)에서 처리
+	// -1(왼쪽) ~ 1(오른쪽) 범위
 	TargetLeanValue = FMath::Clamp(LeanValue, -1.f, 1.f);
 }
 
