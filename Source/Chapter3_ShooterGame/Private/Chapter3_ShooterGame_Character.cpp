@@ -19,6 +19,7 @@ AChapter3_ShooterGame_Character::AChapter3_ShooterGame_Character()
 	GetCharacterMovement()->bOrientRotationToMovement = false;
 	GetCharacterMovement()->MaxWalkSpeed = WalkSpeed;
 	GetCharacterMovement()->MaxWalkSpeedCrouched = CrouchSpeed;
+	GetCharacterMovement()->NavAgentProps.bCanCrouch = true;
 
 	// 1인칭 카메라 
 	FirstPersonCameraComponent = CreateDefaultSubobject<UCameraComponent>(TEXT("FirstPersonCamera"));
@@ -271,7 +272,6 @@ float AChapter3_ShooterGame_Character::CalculateSafeLeanAlpha(float DesiredAlpha
 	FCollisionQueryParams QueryParams;
 	QueryParams.AddIgnoredActor(this);
 
-	// 옆으로 기울일 때 벽에 카메라가 파고들지 않도록 미리 체크
 	if (GetWorld()->LineTraceSingleByChannel(Hit, Start, End, ECC_Visibility, QueryParams))
 	{
 		const float MaxDistance = FMath::Abs(LeanSideOffset * DesiredAlpha);
@@ -291,19 +291,16 @@ void AChapter3_ShooterGame_Character::UpdateLean(float DeltaTime)
 		return;
 	}
 
-	// 벽에 막히지 않는 선에서 목표 기울기 값을 구한 뒤, 부드럽게 보간
 	const float SafeTarget = CalculateSafeLeanAlpha(TargetLeanValue);
 	const float TargetRoll = SafeTarget * LeanAngle;
 	CurrentLeanValue = FMath::FInterpTo(CurrentLeanValue, TargetRoll, DeltaTime, LeanInterpSpeed);
 
 	const float LeanAlpha = (LeanAngle != 0.f) ? (CurrentLeanValue / LeanAngle) : 0.f;
 
-	// 위치: 기울이는 방향으로 이동 + 살짝 낮춤 (배틀그라운드식 코너 피크 느낌)
 	const FVector LeanedLocation = DefaultCameraRelativeLocation
 		+ FVector(0.f, LeanSideOffset * LeanAlpha, -FMath::Abs(LeanAlpha) * LeanHeightDrop);
 	FirstPersonCameraComponent->SetRelativeLocation(LeanedLocation);
 
-	// 회전: 컨트롤러의 Pitch/Yaw는 그대로 따라가되, Roll만 기울기 값으로 직접 합성
 	const FRotator ControlRotation = Controller ? Controller->GetControlRotation() : GetActorRotation();
 	const FRotator LeanedRotation(ControlRotation.Pitch, ControlRotation.Yaw, CurrentLeanValue);
 	FirstPersonCameraComponent->SetWorldRotation(LeanedRotation);
