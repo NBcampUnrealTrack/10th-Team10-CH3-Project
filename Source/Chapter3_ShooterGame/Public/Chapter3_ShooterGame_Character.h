@@ -1,4 +1,4 @@
-// Fill out your copyright notice in the Description page of Project Settings.
+﻿// Fill out your copyright notice in the Description page of Project Settings.
 
 #pragma once
 
@@ -67,13 +67,21 @@ public:
 protected:
 	void UpdateMovementSpeed();
 	void TryVaultOrClimb();
+	void UpdateLean(float DeltaTime);
+	float CalculateSafeLeanAlpha(float DesiredAlpha) const;
+
+	// SetLean으로 들어온 -1~1 사이의 목표값
+	float TargetLeanValue = 0.f;
+
+	// 생성 시점의 카메라 로컬 위치 
+	FVector DefaultCameraRelativeLocation = FVector::ZeroVector;
 
 public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Movement")
 	float WalkSpeed = 400.f;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Movement")
-	float SprintSpeed = 700.f;
+	float SprintSpeed = 1050.f; // 기존 700 
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Movement")
 	float CrouchSpeed = 200.f;
@@ -100,7 +108,7 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Health")
 	float MaxHealth = 100.f;
 
-	// 현재 체력 (생성자에서 MaxHealth로 초기화됨)
+	// 현재 체력 
 	UPROPERTY(BlueprintReadOnly, Category = "Health")
 	float CurrentHealth = 0.f;
 
@@ -111,6 +119,19 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Lean")
 	float LeanAngle = 15.f;
 
+	// 기울일 때 옆으로 이동하는 최대 거리 
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Lean")
+	float LeanSideOffset = 40.f;
+
+	// 기울일 때 카메라가 살짝 낮아지는 정도
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Lean")
+	float LeanHeightDrop = 8.f;
+
+	// 기울여지는 속도
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Lean")
+	float LeanInterpSpeed = 8.f;
+
+	// 기울임 각도
 	UPROPERTY(BlueprintReadOnly, Category = "Lean")
 	float CurrentLeanValue = 0.f;
 
@@ -138,11 +159,9 @@ public:
 	UFUNCTION(BlueprintImplementableEvent, Category = "Parkour")
 	void OnCrawlStart();
 
-	// 데미지를 입었을 때 블루프린트에서 처리 (예: 피격 이펙트, UI 갱신)
 	UFUNCTION(BlueprintImplementableEvent, Category = "Health")
 	void OnDamaged(float DamageAmount, float NewCurrentHealth);
 
-	// 체력이 0 이하가 되어 사망했을 때 블루프린트에서 처리
 	UFUNCTION(BlueprintImplementableEvent, Category = "Health")
 	void OnDeath();
 };

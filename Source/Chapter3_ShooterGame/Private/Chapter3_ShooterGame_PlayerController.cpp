@@ -267,7 +267,7 @@ void AChapter3_ShooterGame_PlayerController::HandleLean(const FInputActionValue&
 {
 	if (AChapter3_ShooterGame_Character* Char = GetPawn<AChapter3_ShooterGame_Character>())
 	{
-		Char->SetLean(Value.Get<float>());
+		Char->SetLean(-Value.Get<float>());
 	}
 }
 
