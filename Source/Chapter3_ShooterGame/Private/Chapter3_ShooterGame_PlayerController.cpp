@@ -39,9 +39,6 @@ namespace
     constexpr float kDefaultCoinThrowSpeed = 1000.0f;
     constexpr float kDefaultCoinUpwardSpeed = 300.0f;
     constexpr float kDefaultCoinThrowInterval = 0.6f;
-    constexpr float kCoinSpawnForwardOffset = 45.0f;
-    constexpr float kCoinSpawnRightOffset = 12.0f;
-    constexpr float kCoinSpawnDownOffset = 10.0f;
 }
 
 AChapter3_ShooterGame_PlayerController::AChapter3_ShooterGame_PlayerController()
@@ -67,11 +64,15 @@ AChapter3_ShooterGame_PlayerController::AChapter3_ShooterGame_PlayerController()
 	coinUpwardSpeed_ = kDefaultCoinUpwardSpeed;
 	coinThrowInterval_ = kDefaultCoinThrowInterval;
 	slowMotionSkill_ = CreateDefaultSubobject<USlowMotionSkillComponent>(TEXT("SlowMotionSkill"));
+    coinThrowSkill_ = CreateDefaultSubobject<UCoinThrowSkillComponent>(TEXT("CoinThrowSkill"));
 
 };
 
 void AChapter3_ShooterGame_PlayerController::BeginPlay()
 {
+    coinThrowSkill_->InitializeFromLegacySettings(coinClass_, coinThrowSpeed_, coinUpwardSpeed_, coinThrowInterval_);
+    coinThrowSkill_->onCoinThrown_.AddUniqueDynamic(this, &AChapter3_ShooterGame_PlayerController::ForwardCoinThrown);
+
     magazineCapacity_ = GetMagazineCapacity();
     currentAmmo_ = magazineCapacity_;
     InitializeWeaponInventory();
@@ -426,6 +427,7 @@ bool AChapter3_ShooterGame_PlayerController::EquipWeaponAtIndex(int32 weaponInde
     }
     equippedWeaponIndex_ = weaponIndex;
     weaponView_ = nextSlot.instance_;
+    coinThrowSkill_->SetIgnoredWeapon(weaponView_);
     currentAmmo_ = FMath::Clamp(nextSlot.ammo_, 0, GetMagazineCapacity());
     weaponView_->SetOwner(controlledPawn);
     weaponView_->SetInstigator(controlledPawn);
@@ -486,80 +488,15 @@ void AChapter3_ShooterGame_PlayerController::HandleAssassinationInput()
 
 void AChapter3_ShooterGame_PlayerController::ThrowCoin()
 {
-    UWorld* world = GetWorld();
-    APawn* controlledPawn = GetPawn();
-    UE_LOG(LogShooting, Log, TEXT("[CoinThrow] Requested by %s"), *GetName());
-    if (!world || !IsValid(controlledPawn) || !IsLocalController() || !HasAuthority()
-        || world->IsPaused() || !coinClass_ || coinThrowSpeed_ <= 0.0f)
+    if (coinThrowSkill_)
     {
-        UE_LOG(LogShooting, Warning,
-            TEXT("[CoinThrow] Preconditions failed: World=%d Pawn=%s Local=%d Authority=%d Paused=%d Class=%s Speed=%.1f"),
-            world != nullptr, *GetNameSafe(controlledPawn), IsLocalController(), HasAuthority(),
-            world ? world->IsPaused() : false, *GetNameSafe(coinClass_.Get()), coinThrowSpeed_);
-        return;
+        coinThrowSkill_->TryThrowCoin();
     }
+}
 
-    const double currentTime = world->GetTimeSeconds();
-    if (currentTime < nextCoinThrowTime_)
-    {
-        UE_LOG(LogShooting, Log, TEXT("[CoinThrow] Cooldown: %.3f seconds remaining"), nextCoinThrowTime_ - currentTime);
-        return;
-    }
-
-    FVector viewLocation = FVector::ZeroVector;
-    FRotator viewRotation = FRotator::ZeroRotator;
-    GetPlayerViewPoint(viewLocation, viewRotation);
-    const FVector throwDirection = viewRotation.Vector();
-    const FVector spawnLocation = viewLocation + viewRotation.RotateVector(
-        FVector(kCoinSpawnForwardOffset, kCoinSpawnRightOffset, -kCoinSpawnDownOffset));
-
-    FCollisionQueryParams queryParams(SCENE_QUERY_STAT(CoinSpawn), false);
-    queryParams.AddIgnoredActor(this);
-    queryParams.AddIgnoredActor(controlledPawn);
-    queryParams.AddIgnoredActor(weaponView_);
-    TArray<AActor*> attachedActors = {};
-    controlledPawn->GetAttachedActors(attachedActors, true, true);
-    queryParams.AddIgnoredActors(attachedActors);
-
-    // 카메라와 생성 위치 사이의 벽을 검사해 벽 너머에서 코인이 생성되는 것을 막는다.
-    const ADistractionCoin* defaultCoin = coinClass_.GetDefaultObject();
-    const FCollisionShape collisionShape = FCollisionShape::MakeSphere(defaultCoin->GetCollisionRadius());
-    FHitResult obstruction = {};
-    if (world->SweepSingleByChannel(obstruction, viewLocation, spawnLocation,
-        FQuat::Identity, ECC_WorldDynamic, collisionShape, queryParams))
-    {
-        UE_LOG(LogShooting, Warning,
-            TEXT("[CoinThrow] Spawn path blocked: Actor=%s Component=%s StartPenetrating=%d From=%s To=%s Radius=%.2f"),
-            *GetNameSafe(obstruction.GetActor()), *GetNameSafe(obstruction.GetComponent()), static_cast<int32>(obstruction.bStartPenetrating),
-            *viewLocation.ToString(), *spawnLocation.ToString(), defaultCoin->GetCollisionRadius());
-        return;
-    }
-
-    FActorSpawnParameters spawnParams = {};
-    spawnParams.Owner = controlledPawn;
-    spawnParams.Instigator = controlledPawn;
-    spawnParams.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
-    ADistractionCoin* coin = world->SpawnActor<ADistractionCoin>(coinClass_, spawnLocation, viewRotation, spawnParams);
-    if (!IsValid(coin))
-    {
-        UE_LOG(LogShooting, Warning, TEXT("[CoinThrow] Spawn failed: Class=%s Location=%s (invalid class or spawn/construction failure)"),
-            *GetNameSafe(coinClass_.Get()), *spawnLocation.ToString());
-        return;
-    }
-
-    nextCoinThrowTime_ = currentTime + FMath::Max(0.0f, coinThrowInterval_);
-    UE_LOG(LogShooting, Log, TEXT("[CoinThrow] Spawned %s at %s"), *GetNameSafe(coin), *coin->GetActorLocation().ToString());
+void AChapter3_ShooterGame_PlayerController::ForwardCoinThrown(ADistractionCoin* coin)
+{
     onCoinThrown_.Broadcast(coin);
-    if (IsValid(coin))
-    {
-        coin->LaunchCoin(throwDirection * coinThrowSpeed_ + FVector::UpVector * coinUpwardSpeed_);
-        UE_LOG(LogShooting, Log, TEXT("[CoinThrow] Launch requested: Actor=%s Velocity=%s"),
-            *GetNameSafe(coin), *coin->GetVelocity().ToString());
-    }
-    else
-    {
-        UE_LOG(LogShooting, Warning, TEXT("[CoinThrow] Coin destroyed by an OnCoinThrown listener before launch"));
-    }
 }
 
 void AChapter3_ShooterGame_PlayerController::Fire()
@@ -617,6 +554,7 @@ void AChapter3_ShooterGame_PlayerController::Fire()
     TArray<AActor*> attachedActors = {};
     controlledPawn->GetAttachedActors(attachedActors, true, true);
     queryParams.AddIgnoredActors(attachedActors);
+    queryParams.bReturnPhysicalMaterial = true;
 
     FHitResult hitResult = {};
     world->LineTraceSingleByChannel(hitResult, start, end, ECC_Visibility, queryParams);
@@ -701,6 +639,25 @@ void AChapter3_ShooterGame_PlayerController::ApplyShotDamage(const FHitResult& h
     if (!hitActor)
     {
         return;
+    }
+
+    // 부위에 맞는 데미지 적용 구현 필요
+    if (hitResult.PhysMaterial.IsValid())
+    {
+        EPhysicalSurface SurfaceType = hitResult.PhysMaterial->SurfaceType;
+
+        switch (SurfaceType)
+        {
+        case SurfaceType1: // Head
+            damage_ = kDefaultDamage * 5.0f;
+            break;
+        case SurfaceType3: // BodyRear
+            damage_ = kDefaultDamage * 0.5f;
+            break;
+        default:
+            damage_ = kDefaultDamage;
+            break;
+        }
     }
 
     UGameplayStatics::ApplyPointDamage(
