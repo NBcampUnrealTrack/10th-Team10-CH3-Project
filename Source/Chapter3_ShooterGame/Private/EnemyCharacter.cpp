@@ -1,6 +1,6 @@
-﻿#include "MainGameState.h"
-#include "EnemyCharacter.h"
+﻿#include "EnemyCharacter.h"
 #include "EnemyAIController.h"
+#include "MainGameState.h"
 #include "Kismet/GameplayStatics.h"
 //#include "PhysicalMaterials/PhysicalMaterial.h"
 #include "GameFramework/CharacterMovementComponent.h"
