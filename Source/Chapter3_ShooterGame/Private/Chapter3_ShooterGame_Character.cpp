@@ -2,6 +2,7 @@
 
 #include "Chapter3_ShooterGame_Character.h"
 #include "UnlockInventoryPickup.h"
+#include "DistractionCoin.h"
 #include "GameFramework/CharacterMovementComponent.h"
 #include "GameFramework/PlayerController.h"
 #include "Camera/CameraComponent.h"
@@ -172,7 +173,11 @@ void AChapter3_ShooterGame_Character::TryVaultOrClimb()
 void AChapter3_ShooterGame_Character::Interact()
 {
     TArray<AActor*> nearbyPickups = {};
-    GetOverlappingActors(nearbyPickups, AUnlockInventoryPickup::StaticClass());
+    GetOverlappingActors(nearbyPickups);
+    nearbyPickups.RemoveAll([](const AActor* actor)
+    {
+        return !IsValid(actor) || (!actor->IsA<AUnlockInventoryPickup>() && !actor->IsA<ADistractionCoin>());
+    });
     const FVector collectorLocation = GetActorLocation();
     nearbyPickups.Sort([collectorLocation](const AActor& left, const AActor& right)
     {
@@ -184,6 +189,12 @@ void AChapter3_ShooterGame_Character::Interact()
     {
         AUnlockInventoryPickup* pickup = Cast<AUnlockInventoryPickup>(actor);
         if (IsValid(pickup) && pickup->TryCollect(this))
+        {
+            return;
+        }
+
+        ADistractionCoin* coin = Cast<ADistractionCoin>(actor);
+        if (IsValid(coin) && coin->TryCollect(this))
         {
             return;
         }
