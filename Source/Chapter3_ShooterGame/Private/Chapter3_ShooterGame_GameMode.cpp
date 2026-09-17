@@ -2,6 +2,7 @@
 #include "Kismet/GameplayStatics.h"
 #include "EngineUtils.h"
 #include "EnemyAIController.h"
+#include "Chapter3_ShooterGame_Character.h"
 
 AChapter3_ShooterGame_GameMode::AChapter3_ShooterGame_GameMode() {
     PrimaryActorTick.bCanEverTick = true;
@@ -31,6 +32,18 @@ void AChapter3_ShooterGame_GameMode::Tick(float delta_seconds) {
         return;
     }
 
+    // 사망 여부 검사
+    CheckPlayerDeath();
+
+    // 사망 판정 시 ProcessGameOver 실행
+    if (is_game_over_) {
+        return;
+    }
+
+    // 발각 상태 검사 및 발각 후 3분 타이머
+    if (!is_detection_timer_active_) {
+        CheckPlayerDetectionFromAI();
+    }
     else {
         detection_remaining_time_ -= delta_seconds;
         if (detection_remaining_time_ <= 0.0f) {
@@ -40,6 +53,8 @@ void AChapter3_ShooterGame_GameMode::Tick(float delta_seconds) {
         }
     }
 
+
+    // 보스 맵 5분 제한 시간 타이머
     if (is_boss_map_timer_active_) {
         boss_map_remaining_time_ -= delta_seconds;
         if (boss_map_remaining_time_ <= 0.0f) {
@@ -49,6 +64,18 @@ void AChapter3_ShooterGame_GameMode::Tick(float delta_seconds) {
         }
     }
 }
+
+    // 플레이어 사망 상태 검사 (Character 클래스의 IsDead() 호출)
+    void AChapter3_ShooterGame_GameMode::CheckPlayerDeath() {
+        APawn* player_pawn = UGameplayStatics::GetPlayerPawn(GetWorld(), 0);
+        if (!player_pawn) return;
+
+        if (AChapter3_ShooterGame_Character* player_character = Cast<AChapter3_ShooterGame_Character>(player_pawn)) {
+            if (player_character->IsDead()) {
+                ProcessGameOver(TEXT("플레이어 체력이 0이 되어 사망했습니다."));
+            }
+        }
+    }
 
 // GameMode가 직접 적 AI의 상태를 호출/확인하는 함수
 void AChapter3_ShooterGame_GameMode::CheckPlayerDetectionFromAI() {
@@ -68,6 +95,18 @@ void AChapter3_ShooterGame_GameMode::CheckPlayerDetectionFromAI() {
     }
 }
 
+void AChapter3_ShooterGame_GameMode::ReportPlayerDetected()
+{
+    if (is_game_over_ || is_game_cleared_ || is_detection_timer_active_)
+    {
+        return;
+    }
+
+    UE_LOG(LogTemp, Warning, TEXT("[GameMode] ReportPlayerDetected() 호출됨 -> 3분 타이머 시작"));
+    is_detection_timer_active_ = true;
+    detection_remaining_time_ = kDetectionTimeLimit;
+}
+
 // --- 점수 로직 ---
 void AChapter3_ShooterGame_GameMode::AddScore(int32 amount) {
     if (is_game_over_ || is_game_cleared_) return;
@@ -82,15 +121,6 @@ int32 AChapter3_ShooterGame_GameMode::GetCurrentScore() const {
 // ==========================================
 // 임시
 // ==========================================
-
-void AChapter3_ShooterGame_GameMode::Dummy_ReceivePlayerHealth(float current_health) {
-    if (is_game_over_ || is_game_cleared_) return;
-
-    UE_LOG(LogTemp, Warning, TEXT("[DUMMY] 플레이어 체력 수신: %.1f"), current_health);
-    if (current_health <= 0.0f) {
-        ProcessGameOver(TEXT("플레이어 체력이 0이 되어 사망했습니다."));
-    }
-}
 
 void AChapter3_ShooterGame_GameMode::Dummy_ReceiveEnemyEliminated() {
     if (is_game_over_ || is_game_cleared_) return;

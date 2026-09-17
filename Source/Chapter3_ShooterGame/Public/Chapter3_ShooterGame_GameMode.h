@@ -36,9 +36,6 @@ public:
     // ==========================================
 
     UFUNCTION(BlueprintCallable, Category = "TeamDummy")
-    void Dummy_ReceivePlayerHealth(float current_health);
-
-    UFUNCTION(BlueprintCallable, Category = "TeamDummy")
     void Dummy_ReceiveEnemyEliminated();
 
     UFUNCTION(BlueprintCallable, Category = "TeamDummy")
@@ -58,8 +55,9 @@ private:
     void ProcessGameOver(const FString& fail_reason);
     void ProcessGameVictory(const FString& victory_reason);
 
-    // --- 적 AI에게 발각 되었는지 상태 확인용 검사 함수 ---
+    // --- 상태 확인용 검사 함수 ---
     void CheckPlayerDetectionFromAI();
+    void CheckPlayerDeath();
 
     // --- 상태 변수 ---
     UPROPERTY(VisibleAnywhere, Category = "Mission")
