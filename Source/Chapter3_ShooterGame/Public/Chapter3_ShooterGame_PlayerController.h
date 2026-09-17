@@ -1,9 +1,10 @@
-#pragma once
+ï»¿#pragma once
 
 #include "CoreMinimal.h"
 #include "GameFramework/PlayerController.h"
 #include "TimerManager.h"
 #include "InputActionValue.h"
+#include "CoinThrowSkillComponent.h"
 #include "Chapter3_ShooterGame_PlayerController.generated.h"
 
 class UEnhancedInputLocalPlayerSubsystem;
@@ -28,8 +29,6 @@ struct FWeaponViewSlotState
 
 	int32 ammo_ = 0;
 };
-
-DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnCoinThrown, ADistractionCoin*, coin);
 
 UCLASS()
 class CHAPTER3_SHOOTERGAME_API AChapter3_ShooterGame_PlayerController : public APlayerController
@@ -89,7 +88,7 @@ protected:
     UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Shooting|Weapon")
     TSubclassOf<AM1911WeaponView> weaponViewClass_ = nullptr;
 
-    // ÈÙ ¼ø¼­´ë·Î ÃÑ BP¸¦ ÁöÁ¤ÇÑ´Ù. ºñ¾î ÀÖÀ¸¸é ±âÁ¸ Weapon View Class ÇÏ³ª¸¦ »ç¿ëÇÑ´Ù.
+    // íœ  ìˆœì„œëŒ€ë¡œ ì´ BPë¥¼ ì§€ì •í•œë‹¤. ë¹„ì–´ ìˆìœ¼ë©´ ê¸°ì¡´ Weapon View Class í•˜ë‚˜ë¥¼ ì‚¬ìš©í•œë‹¤.
     UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Shooting|Weapon")
     TArray<TSubclassOf<AM1911WeaponView>> weaponViewClasses_ = {};
 
@@ -99,16 +98,19 @@ protected:
     UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Skills")
     TObjectPtr<USlowMotionSkillComponent> slowMotionSkill_ = nullptr;
 
-    UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = "Coin")
+    UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Skills")
+    TObjectPtr<UCoinThrowSkillComponent> coinThrowSkill_ = nullptr;
+
+    UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = "Coin|Legacy")
     TSubclassOf<ADistractionCoin> coinClass_ = nullptr;
 
-    UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = "Coin", meta = (ClampMin = "0.0", Units = "cm/s"))
+    UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = "Coin|Legacy", meta = (ClampMin = "0.0", Units = "cm/s"))
     float coinThrowSpeed_ = 0.0f;
 
-    UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = "Coin", meta = (ClampMin = "0.0", Units = "cm/s"))
+    UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = "Coin|Legacy", meta = (ClampMin = "0.0", Units = "cm/s"))
     float coinUpwardSpeed_ = 0.0f;
 
-    UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = "Coin", meta = (ClampMin = "0.0", Units = "s"))
+    UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = "Coin|Legacy", meta = (ClampMin = "0.0", Units = "s"))
     float coinThrowInterval_ = 0.0f;
 
     UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Input")
@@ -235,7 +237,7 @@ public:
     UFUNCTION(BlueprintPure, Category = "BackAttack")
     UAssassinationTargetComponent* FindAssassinationTarget() const;
 
-    // »ı¼º Á÷ÈÄ È£ÃâµÈ´Ù. ¿©±â¼­ coinÀÇ onCoinLanded_¿¡ ¹ÙÀÎµùÇÒ ¼ö ÀÖ´Ù.
+    // ìƒì„± ì§í›„ í˜¸ì¶œëœë‹¤. ì—¬ê¸°ì„œ coinì˜ onCoinLanded_ì— ë°”ì¸ë”©í•  ìˆ˜ ìˆë‹¤.
     UPROPERTY(BlueprintAssignable, Category = "Coin")
     FOnCoinThrown onCoinThrown_;
 
@@ -249,6 +251,9 @@ private:
     void QueueAutomaticReload();
     void FinishReload();
     void BindGameplayInput(UEnhancedInputComponent* enhancedInput);
+
+    UFUNCTION()
+    void ForwardCoinThrown(ADistractionCoin* coin);
     void ApplyShotDamage(const FHitResult& hitResult, const FVector& shotDirection);
     void DrawShotDebug(const FVector& start, const FVector& end, const FHitResult& hitResult);
 
@@ -256,7 +261,6 @@ private:
     TWeakObjectPtr<UEnhancedInputLocalPlayerSubsystem> inputSubsystem_ = nullptr;
 
     double nextFireTime_ = 0.0;
-    double nextCoinThrowTime_ = 0.0;
     bool aimHeld_ = false;
 
     UPROPERTY(VisibleInstanceOnly, BlueprintReadOnly, Category = "Shooting|Magazine", meta = (AllowPrivateAccess = "true"))

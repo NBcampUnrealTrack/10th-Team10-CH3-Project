@@ -1,4 +1,4 @@
-// Fill out your copyright notice in the Description page of Project Settings.
+﻿// Fill out your copyright notice in the Description page of Project Settings.
 
 #pragma once
 
@@ -51,6 +51,14 @@ public:
 	void StartFire();
 	void StopFire();
 
+	// 데미지를 입었을 때 엔진에서 호출 (ApplyDamage 계열 함수와 연동됨)
+	virtual float TakeDamage(float DamageAmount, struct FDamageEvent const& DamageEvent, class AController* EventInstigator, AActor* DamageCauser) override;
+
+	// TakeDamage 이 함수로 조회
+	// ApplyDamage 함수 호출 직후 바로 확인하면 "이번 공격으로 죽었는지"를 알수있음
+	UFUNCTION(BlueprintPure, Category = "Health")
+	bool IsDead() const { return bIsDead; }
+
 	// bAim = true면 정조준 시작, false면 정조준 해제 (우클릭)
 	void SetAiming(bool bAim);
 
@@ -64,13 +72,21 @@ public:
 protected:
 	void UpdateMovementSpeed();
 	void TryVaultOrClimb();
+	void UpdateLean(float DeltaTime);
+	float CalculateSafeLeanAlpha(float DesiredAlpha) const;
+
+	// SetLean으로 들어온 -1~1 사이값
+	float TargetLeanValue = 0.f;
+
+	// 생성 시점의 카메라 로컬 위치 
+	FVector DefaultCameraRelativeLocation = FVector::ZeroVector;
 
 public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Movement")
 	float WalkSpeed = 400.f;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Movement")
-	float SprintSpeed = 700.f;
+	float SprintSpeed = 1050.f; // 기존 700 
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Movement")
 	float CrouchSpeed = 200.f;
@@ -93,8 +109,33 @@ public:
 	UPROPERTY(BlueprintReadOnly, Category = "Combat")
 	bool bIsAiming = false;
 
+	// 최대 체력
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Health")
+	float MaxHealth = 100.f;
+
+	// 현재 체력 
+	UPROPERTY(BlueprintReadOnly, Category = "Health")
+	float CurrentHealth = 0.f;
+
+	// 사망 여부
+	UPROPERTY(BlueprintReadOnly, Category = "Health")
+	bool bIsDead = false;
+
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Lean")
 	float LeanAngle = 15.f;
+
+	// 기울일 때 옆으로 이동하는 최대 거리 
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Lean")
+	float LeanSideOffset = 40.f;
+
+	// 기울일 때 카메라가 살짝 낮아지는 정도 
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Lean")
+	float LeanHeightDrop = 8.f;
+
+	// 기울여지는 속도
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Lean")
+	float LeanInterpSpeed = 8.f;
+
 
 	UPROPERTY(BlueprintReadOnly, Category = "Lean")
 	float CurrentLeanValue = 0.f;
@@ -122,4 +163,10 @@ public:
 
 	UFUNCTION(BlueprintImplementableEvent, Category = "Parkour")
 	void OnCrawlStart();
+
+	UFUNCTION(BlueprintImplementableEvent, Category = "Health")
+	void OnDamaged(float DamageAmount, float NewCurrentHealth);
+
+	UFUNCTION(BlueprintImplementableEvent, Category = "Health")
+	void OnDeath();
 };
