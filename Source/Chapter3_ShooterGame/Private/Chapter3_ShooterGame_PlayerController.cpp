@@ -7,6 +7,7 @@
 #include "DistractionCoin.h"
 #include "SlowMotionSkillComponent.h"
 #include "AssassinationTargetComponent.h"
+#include "UnlockInventoryComponent.h"
 #include "EngineUtils.h"
 #include "Camera/PlayerCameraManager.h"
 #include "Components/PrimitiveComponent.h"
@@ -65,6 +66,7 @@ AChapter3_ShooterGame_PlayerController::AChapter3_ShooterGame_PlayerController()
 	coinThrowInterval_ = kDefaultCoinThrowInterval;
 	slowMotionSkill_ = CreateDefaultSubobject<USlowMotionSkillComponent>(TEXT("SlowMotionSkill"));
     coinThrowSkill_ = CreateDefaultSubobject<UCoinThrowSkillComponent>(TEXT("CoinThrowSkill"));
+    unlockInventory_ = CreateDefaultSubobject<UUnlockInventoryComponent>(TEXT("UnlockInventory"));
 
 };
 
