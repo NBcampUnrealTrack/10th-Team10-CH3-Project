@@ -1,9 +1,11 @@
 #include "DistractionCoin.h"
 
+#include "CoinThrowSkillComponent.h"
 #include "Components/SphereComponent.h"
 #include "Components/StaticMeshComponent.h"
 #include "Engine/StaticMesh.h"
 #include "GameFramework/Pawn.h"
+#include "GameFramework/PlayerController.h"
 #include "GameFramework/ProjectileMovementComponent.h"
 #include "Kismet/GameplayStatics.h"
 #include "Perception/AISense_Hearing.h"
@@ -14,7 +16,6 @@ namespace
     constexpr float kDefaultCollisionRadius = 2.0f;
     constexpr float kDefaultNoiseRange = 1500.0f;
     constexpr float kDefaultFlightLifeSpan = 15.0f;
-    constexpr float kDefaultLandedLifeSpan = 8.0f;
     constexpr float kNoiseLoudness = 1.0f;
     constexpr float kDefaultGravityScale = 1.0f;
 }
@@ -27,7 +28,6 @@ ADistractionCoin::ADistractionCoin()
     coinDiameter_ = kDefaultCoinDiameter;
     noiseRange_ = kDefaultNoiseRange;
     flightLifeSpan_ = kDefaultFlightLifeSpan;
-    landedLifeSpan_ = kDefaultLandedLifeSpan;
 
     collision_ = CreateDefaultSubobject<USphereComponent>(TEXT("CoinCollision"));
     SetRootComponent(collision_);
@@ -38,6 +38,15 @@ ADistractionCoin::ADistractionCoin()
     collision_->SetCollisionResponseToChannel(ECC_Camera, ECR_Ignore);
     collision_->SetGenerateOverlapEvents(false);
     collision_->SetCanEverAffectNavigation(false);
+
+    pickupSphere_ = CreateDefaultSubobject<USphereComponent>(TEXT("PickupSphere"));
+    pickupSphere_->SetupAttachment(collision_);
+    pickupSphere_->InitSphereRadius(pickupRadius_);
+    pickupSphere_->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+    pickupSphere_->SetCollisionResponseToAllChannels(ECR_Ignore);
+    pickupSphere_->SetCollisionResponseToChannel(ECC_Pawn, ECR_Overlap);
+    pickupSphere_->SetGenerateOverlapEvents(true);
+    pickupSphere_->SetCanEverAffectNavigation(false);
 
     coinMesh_ = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("CoinMesh"));
     coinMesh_->SetupAttachment(collision_);
@@ -59,14 +68,55 @@ void ADistractionCoin::OnConstruction(const FTransform& transform)
 {
     Super::OnConstruction(transform);
     FitCoinMesh();
+    UpdatePickupRadius();
 }
 
 void ADistractionCoin::BeginPlay()
 {
     Super::BeginPlay();
     FitCoinMesh();
+    UpdatePickupRadius();
+    pickupSphere_->SetCollisionEnabled(ECollisionEnabled::NoCollision);
     IgnoreThrower();
     SetLifeSpan(FMath::Max(UE_SMALL_NUMBER, flightLifeSpan_));
+}
+
+void ADistractionCoin::UpdatePickupRadius()
+{
+    constexpr float kMinimumRadius = 1.0f;
+    const float safeRadius = FMath::IsFinite(pickupRadius_)
+        ? FMath::Max(kMinimumRadius, pickupRadius_) : kMinimumRadius;
+    pickupSphere_->SetSphereRadius(safeRadius);
+}
+
+bool ADistractionCoin::TryCollect(APawn* collector)
+{
+    if (!HasAuthority() || !hasLanded_ || isCollecting_ || isCollected_ || IsActorBeingDestroyed()
+        || !IsValid(collector) || !pickupSphere_->IsOverlappingActor(collector))
+    {
+        return false;
+    }
+
+    APlayerController* controller = Cast<APlayerController>(collector->GetController());
+    UCoinThrowSkillComponent* skill = IsValid(controller)
+        ? controller->FindComponentByClass<UCoinThrowSkillComponent>() : nullptr;
+    if (!IsValid(skill))
+    {
+        return false;
+    }
+
+    // 개수 변경 알림에서 같은 동전을 다시 획득하지 못하게 한다.
+    TGuardValue<bool> collectingGuard(isCollecting_, true);
+    if (!skill->TryRestoreCoin())
+    {
+        return false;
+    }
+
+    isCollected_ = true;
+    SetActorEnableCollision(false);
+    SetActorHiddenInGame(true);
+    Destroy();
+    return true;
 }
 
 void ADistractionCoin::FitCoinMesh()
@@ -148,6 +198,7 @@ void ADistractionCoin::HandleProjectileStop(const FHitResult& hitResult) // 투�
 
     hasLanded_ = true;
     collision_->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+    pickupSphere_->SetCollisionEnabled(ECollisionEnabled::QueryOnly);
 	const FVector landingLocation = hitResult.ImpactPoint; // 착지점 위치를 보고한다.
     const float effectiveNoiseRange = FMath::Max(0.0f, noiseRange_);
 
@@ -164,6 +215,7 @@ void ADistractionCoin::HandleProjectileStop(const FHitResult& hitResult) // 투�
         UGameplayStatics::PlaySoundAtLocation(this, landingSound_, landingLocation);
     }
 
-    SetLifeSpan(FMath::Max(UE_SMALL_NUMBER, landedLifeSpan_));
+    // 착지한 동전은 플레이어가 회수할 때까지 남겨 둔다.
+    SetLifeSpan(0.0f);
     onCoinLanded_.Broadcast(landingLocation, GetInstigator(), effectiveNoiseRange);
 }
