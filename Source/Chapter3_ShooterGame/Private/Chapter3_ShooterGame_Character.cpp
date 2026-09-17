@@ -1,6 +1,7 @@
 // Fill out your copyright notice in the Description page of Project Settings.
 
 #include "Chapter3_ShooterGame_Character.h"
+#include "UnlockInventoryPickup.h"
 #include "GameFramework/CharacterMovementComponent.h"
 #include "GameFramework/PlayerController.h"
 #include "Camera/CameraComponent.h"
@@ -170,6 +171,24 @@ void AChapter3_ShooterGame_Character::TryVaultOrClimb()
 
 void AChapter3_ShooterGame_Character::Interact()
 {
+    TArray<AActor*> nearbyPickups = {};
+    GetOverlappingActors(nearbyPickups, AUnlockInventoryPickup::StaticClass());
+    const FVector collectorLocation = GetActorLocation();
+    nearbyPickups.Sort([collectorLocation](const AActor& left, const AActor& right)
+    {
+        return FVector::DistSquared(collectorLocation, left.GetActorLocation())
+            < FVector::DistSquared(collectorLocation, right.GetActorLocation());
+    });
+
+    for (AActor* actor : nearbyPickups)
+    {
+        AUnlockInventoryPickup* pickup = Cast<AUnlockInventoryPickup>(actor);
+        if (IsValid(pickup) && pickup->TryCollect(this))
+        {
+            return;
+        }
+    }
+
 	const FVector Start = GetPawnViewLocation();
 	const FVector End = Start + GetControlRotation().Vector() * InteractTraceDistance;
 

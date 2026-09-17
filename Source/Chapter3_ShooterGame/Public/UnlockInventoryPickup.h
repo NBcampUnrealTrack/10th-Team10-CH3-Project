@@ -25,13 +25,10 @@ public:
     UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Unlock Pickup")
     FName itemId_ = NAME_None;
 
-    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Unlock Pickup")
-    bool collectOnOverlap_ = true;
-
     UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Unlock Pickup", meta = (ClampMin = "1.0", Units = "cm"))
     float pickupRadius_ = 75.0f;
 
-    // 직접 상호작용에서도 호출 가능. 중복 획득은 소비하지만 해금 알림은 반복하지 않는다.
+    // 획득 범위 안에서 상호작용할 때 호출한다. 중복 획득은 소비하지만 해금 알림은 반복하지 않는다.
     UFUNCTION(BlueprintCallable, Category = "Unlock Pickup")
     bool TryCollect(APawn* collector);
 
@@ -44,10 +41,6 @@ protected:
     virtual void BeginPlay() override;
 
 private:
-    UFUNCTION()
-    void HandleOverlap(UPrimitiveComponent* overlappedComponent, AActor* otherActor,
-        UPrimitiveComponent* otherComponent, int32 otherBodyIndex, bool fromSweep, const FHitResult& sweepResult);
-
     bool isCollecting_ = false;
     bool isCollected_ = false;
 };

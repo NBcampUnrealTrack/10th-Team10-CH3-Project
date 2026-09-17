@@ -18,7 +18,6 @@ AUnlockInventoryPickup::AUnlockInventoryPickup()
     pickupSphere_->SetCollisionResponseToAllChannels(ECR_Ignore);
     pickupSphere_->SetCollisionResponseToChannel(ECC_Pawn, ECR_Overlap);
     pickupSphere_->SetGenerateOverlapEvents(true);
-    pickupSphere_->OnComponentBeginOverlap.AddDynamic(this, &AUnlockInventoryPickup::HandleOverlap);
 
     itemMesh_ = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("ItemMesh"));
     itemMesh_->SetupAttachment(pickupSphere_);
@@ -42,18 +41,14 @@ void AUnlockInventoryPickup::BeginPlay()
     }
 }
 
-void AUnlockInventoryPickup::HandleOverlap(UPrimitiveComponent* overlappedComponent, AActor* otherActor,
-    UPrimitiveComponent* otherComponent, int32 otherBodyIndex, bool fromSweep, const FHitResult& sweepResult)
-{
-    if (collectOnOverlap_)
-    {
-        TryCollect(Cast<APawn>(otherActor));
-    }
-}
-
 bool AUnlockInventoryPickup::TryCollect(APawn* collector)
 {
     if (isCollecting_ || isCollected_ || IsActorBeingDestroyed() || !IsValid(collector) || itemId_.IsNone())
+    {
+        return false;
+    }
+
+    if (!IsValid(pickupSphere_) || !pickupSphere_->IsOverlappingActor(collector))
     {
         return false;
     }
