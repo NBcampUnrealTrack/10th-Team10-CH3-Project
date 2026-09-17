@@ -105,7 +105,7 @@ void AEnemyCharacter::AlertCalculation(void)
 						enemyAIController->StopEnemy();
 
 						//적 AI 공격 구현
-						GetWorldTimerManager().SetTimer(EnemyAttackIntervalTimer_, this, &AEnemyCharacter::StartFire, 2.0f, true);
+						GetWorldTimerManager().SetTimer(EnemyAttackIntervalTimer_, this, &AEnemyCharacter::StartFire, 1.0f, true);
 					}
 					return;
 				}
@@ -172,7 +172,6 @@ float AEnemyCharacter::TakeDamage(float DamageAmount, struct FDamageEvent const&
 void AEnemyCharacter::StartFire(void) {
 	if (AEnemyAIController* enemyAIController = Cast<AEnemyAIController>(GetController()))
 	{
-		GEngine->AddOnScreenDebugMessage(-1, 1.0f, FColor::Red, FString::Printf(TEXT("Enemy Attack Successed!")));
 		enemyAIController->Fire();
 	}
 }
