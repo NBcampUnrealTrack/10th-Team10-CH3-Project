@@ -177,6 +177,17 @@ void AEnemyAIController::Fire(void)
 	FHitResult hitResult = {};
 	world->LineTraceSingleByChannel(hitResult, start, end, ECC_Visibility, queryParams);
 
+	DrawDebugLine(
+		GetWorld(),
+		start,
+		end,
+		FColor::White,
+		false, // 지속 지속 여부
+		1.0f,
+		0, // 플레이어 우선순위
+		0.5f // 선 두께
+	);
+
 	if (hitResult.bBlockingHit)
 	{
 		ApplyShotDamage(hitResult, shotDirection);
