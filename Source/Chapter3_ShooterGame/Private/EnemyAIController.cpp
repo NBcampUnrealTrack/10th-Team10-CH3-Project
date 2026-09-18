@@ -54,14 +54,15 @@ void AEnemyAIController::OnPerceptionUpdated(AActor* Actor, FAIStimulus Stimulus
 		//적 AI가 플레이어를 감지했을 때
 		isCaptured_ = true;
 		GetWorldTimerManager().ClearTimer(enemyBehaviorTimer_);
-		//SetFocus(playerPawn_);
 	}
 	else
 	{
+		GEngine->AddOnScreenDebugMessage(-1, 1.0f, FColor::Green, FString::Printf(TEXT("Player Lose")));
+
 		//적 AI가 플레이어를 감지하지 못했을 때
 		isCaptured_ = false;
+		ClearFocus(EAIFocusPriority::Gameplay);
 		GetWorldTimerManager().SetTimer(enemyBehaviorTimer_, this, &AEnemyAIController::MoveToRandomLocation, FMath::FRandRange(2.0f, 3.5f), true);
-		//ClearFocus(EAIFocusPriority::Gameplay);
 	}
 }
 
@@ -87,8 +88,6 @@ void AEnemyAIController::OnPossess(APawn* InPawn)
 
 void AEnemyAIController::MoveToRandomLocation(void)
 {
-	GEngine->AddOnScreenDebugMessage(-1, 1.0f, FColor::Green, FString::Printf(TEXT("MoveToRandomLocation!")));
-
 	if (myPawn_)
 	{
 		//현재 월드에서 사용 중인 NavigationSystem을 가져옵니다.

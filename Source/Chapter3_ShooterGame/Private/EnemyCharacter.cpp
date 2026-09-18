@@ -1,8 +1,8 @@
 ﻿#include "EnemyCharacter.h"
 #include "EnemyAIController.h"
+#include "DistractionCoin.h"
 #include "MainGameState.h"
 #include "Kismet/GameplayStatics.h"
-//#include "PhysicalMaterials/PhysicalMaterial.h"
 #include "GameFramework/CharacterMovementComponent.h"
 
 AEnemyCharacter::AEnemyCharacter()
@@ -16,10 +16,9 @@ AEnemyCharacter::AEnemyCharacter()
 	soundTriggerCollision_->InitSphereRadius(300.0f);
 	soundTriggerCollision_->SetRelativeLocation(FVector(0.0f, 0.0f, 75.0f));
 
-	soundTriggerCollision_->SetCollisionProfileName(TEXT("Trigger"));
+	soundTriggerCollision_->CanCharacterStepUpOn = ECB_No;
+	soundTriggerCollision_->SetCollisionProfileName(TEXT("OverlapAll"));
 	soundTriggerCollision_->SetGenerateOverlapEvents(true);
-
-	//soundTriggerCollision_->OnComponentBeginOverlap.AddDynamic(this, &AEnemyCharacter::OnOverlapBegin);
 
 	PrimaryActorTick.bCanEverTick = false;
 }
@@ -46,6 +45,7 @@ void AEnemyCharacter::AlertCalculation(void)
 			if (APawn* playerPawn = UGameplayStatics::GetPlayerPawn(GetWorld(), 0))
 			{
 				float distanceToPlayer = FVector::Distance(GetActorLocation(), playerPawn->GetActorLocation());
+				enemyAIController->SetFocus(playerPawn);
 
 				if (distanceToPlayer > sightRadius_ / 2.0f)
 				{
@@ -54,8 +54,6 @@ void AEnemyCharacter::AlertCalculation(void)
 						//적 AI의 시야 범위 안에 처음 들어온 경우
 						if (alertType_ != EAlertType::caution)
 						{
-							GEngine->AddOnScreenDebugMessage(-1, 1.0f, FColor::Orange, FString::Printf(TEXT("Mode: Caution!")));
-
 							alertType_ = EAlertType::caution;
 							SetMovementSpeed();
 						}
@@ -71,10 +69,7 @@ void AEnemyCharacter::AlertCalculation(void)
 						//적 AI의 발각 범위 안에 처음 들어온 경우
 						if (alertType_ != EAlertType::detection)
 						{
-							GEngine->AddOnScreenDebugMessage(-1, 1.0f, FColor::Orange, FString::Printf(TEXT("Mode: Detection!")));
-
 							alertType_ = EAlertType::detection;
-							enemyAIController->ClearFocus(EAIFocusPriority::Gameplay);
 							SetMovementSpeed();
 						}
 					}
@@ -90,7 +85,6 @@ void AEnemyCharacter::AlertCalculation(void)
 						GEngine->AddOnScreenDebugMessage(-1, 1.0f, FColor::Red, FString::Printf(TEXT("Mode: Attack!")));
 
 						alertType_ = EAlertType::attack;
-						enemyAIController->SetFocus(playerPawn);
 						enemyAIController->StopEnemy();
 
 						//적 AI 공격 구현
@@ -106,8 +100,6 @@ void AEnemyCharacter::AlertCalculation(void)
 		{
 			if (alertType_ != EAlertType::patrol)
 			{
-				GEngine->AddOnScreenDebugMessage(-1, 1.0f, FColor::Green, FString::Printf(TEXT("Mode: Patrol!")));
-
 				alertType_ = EAlertType::patrol;
 				GetWorldTimerManager().ClearTimer(EnemyAttackIntervalTimer_);
 				SetMovementSpeed();
@@ -133,6 +125,11 @@ void AEnemyCharacter::DestroyEnemy(void)
 void AEnemyCharacter::BeginPlay()
 {
 	Super::BeginPlay();
+
+	if (soundTriggerCollision_)
+	{
+		soundTriggerCollision_->OnComponentBeginOverlap.AddDynamic(this, &AEnemyCharacter::OnOverlapBegin);
+	}
 
 	UCharacterMovementComponent* Movement = GetCharacterMovement();
 	if (Movement)
@@ -198,18 +195,13 @@ void AEnemyCharacter::OnDeath(void) {
 	DestroyEnemy();
 }
 
-void AEnemyCharacter::OnOverlapBegin(
-	UPrimitiveComponent* OverlappedComp,
-	AActor* OtherActor,
-	UPrimitiveComponent* OtherComp,
-	int32 OtherBodyIndex,
-	bool bFromSweep,
-	const FHitResult& SweepResult
-)
+void AEnemyCharacter::OnOverlapBegin(UPrimitiveComponent* OverlappedComp, AActor* OtherActor,
+	UPrimitiveComponent* OtherComp, int32 OtherBodyIndex,
+	bool bFromSweep, const FHitResult& SweepResult)
 {
-	if (OtherActor && (OtherActor != this))
+	if (ADistractionCoin* verifiedCoin = Cast<ADistractionCoin>(OtherActor))
 	{
-		UE_LOG(LogTemp, Warning, TEXT("Overlap with: %s"), *OtherActor->GetName());
+		GEngine->AddOnScreenDebugMessage(-1, 5.0f, FColor::Red, FString::Printf(TEXT("Overlap Coin!")));
 	}
 }
 

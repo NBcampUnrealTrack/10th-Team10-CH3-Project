@@ -49,6 +49,7 @@ public:
 	//TMap<EEnemyType, USkeletalMesh*> enemyMeshes_;
 
 protected:
+	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = "Sound Collision")
 	USphereComponent* soundTriggerCollision_;
 
 	virtual void BeginPlay() override;
@@ -57,14 +58,10 @@ protected:
 	void StartFire(void);
 	void OnDeath(void);
 
-	void OnOverlapBegin(
-		UPrimitiveComponent* OverlappedComp,
-		AActor* OtherActor,
-		UPrimitiveComponent* OtherComp,
-		int32 OtherBodyIndex,
-		bool bFromSweep,
-		const FHitResult& SweepResult
-	);
+	UFUNCTION()
+	void OnOverlapBegin(UPrimitiveComponent* OverlappedComp, AActor* OtherActor,
+		UPrimitiveComponent* OtherComp, int32 OtherBodyIndex,
+		bool bFromSweep, const FHitResult& SweepResult);
 
 private:
 	FTimerHandle EnemyStateUpdateTimer_;
