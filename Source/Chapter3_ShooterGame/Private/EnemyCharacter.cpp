@@ -19,7 +19,7 @@ AEnemyCharacter::AEnemyCharacter()
 	soundTriggerCollision_->SetCollisionProfileName(TEXT("Trigger"));
 	soundTriggerCollision_->SetGenerateOverlapEvents(true);
 
-	soundTriggerCollision_->OnComponentBeginOverlap.AddDynamic(this, &AEnemyCharacter::OnOverlapBegin);
+	//soundTriggerCollision_->OnComponentBeginOverlap.AddDynamic(this, &AEnemyCharacter::OnOverlapBegin);
 
 	PrimaryActorTick.bCanEverTick = false;
 }
