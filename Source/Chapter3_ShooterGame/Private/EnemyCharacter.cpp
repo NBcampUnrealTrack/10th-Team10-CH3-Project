@@ -10,28 +10,16 @@ AEnemyCharacter::AEnemyCharacter()
 	AIControllerClass = AEnemyAIController::StaticClass();
 	AutoPossessAI = EAutoPossessAI::PlacedInWorldOrSpawned;
 
-	UCharacterMovementComponent* Movement = GetCharacterMovement();
-	if (Movement)
-	{
-		runSpeed_ = walkSpeed_ * 1.5f;
+	soundTriggerCollision_ = CreateDefaultSubobject<USphereComponent>(TEXT("SoundTriggerCollision"));
+	soundTriggerCollision_->SetupAttachment(RootComponent);
 
-		if (enemyType_ == EEnemyType::bodyguard)
-		{
-			walkSpeed_ *= 0.75f;
-			runSpeed_ *= 0.75f;
+	soundTriggerCollision_->InitSphereRadius(300.0f);
+	soundTriggerCollision_->SetRelativeLocation(FVector(0.0f, 0.0f, 75.0f));
 
-			Movement->MaxWalkSpeed = walkSpeed_;
-		}
-		else
-		{
-			Movement->MaxWalkSpeed = walkSpeed_;
-		}
+	soundTriggerCollision_->SetCollisionProfileName(TEXT("Trigger"));
+	soundTriggerCollision_->SetGenerateOverlapEvents(true);
 
-		//Character가 이동하는 방향을 바라보도록 설정합니다.
-		Movement->bOrientRotationToMovement = true;
-		//Character가 회전할 때의 속도를 설정합니다.
-		Movement->RotationRate = FRotator(0.0f, 540.0f, 0.0f);
-	}
+	soundTriggerCollision_->OnComponentBeginOverlap.AddDynamic(this, &AEnemyCharacter::OnOverlapBegin);
 
 	PrimaryActorTick.bCanEverTick = false;
 }
@@ -146,6 +134,29 @@ void AEnemyCharacter::BeginPlay()
 {
 	Super::BeginPlay();
 
+	UCharacterMovementComponent* Movement = GetCharacterMovement();
+	if (Movement)
+	{
+		runSpeed_ = walkSpeed_ * 1.5f;
+
+		if (enemyType_ == EEnemyType::bodyguard)
+		{
+			walkSpeed_ *= 0.75f;
+			runSpeed_ *= 0.75f;
+
+			Movement->MaxWalkSpeed = walkSpeed_;
+		}
+		else
+		{
+			Movement->MaxWalkSpeed = walkSpeed_;
+		}
+
+		//Character가 이동하는 방향을 바라보도록 설정합니다.
+		Movement->bOrientRotationToMovement = true;
+		//Character가 회전할 때의 속도를 설정합니다.
+		Movement->RotationRate = FRotator(0.0f, 540.0f, 0.0f);
+	}
+
 	alertType_ = EAlertType::patrol;
 	if (AEnemyAIController* enemyAIController = Cast<AEnemyAIController>(GetController()))
 	{
@@ -185,6 +196,21 @@ void AEnemyCharacter::OnDeath(void) {
 
 	//적 AI 사망 로직 구현
 	DestroyEnemy();
+}
+
+void AEnemyCharacter::OnOverlapBegin(
+	UPrimitiveComponent* OverlappedComp,
+	AActor* OtherActor,
+	UPrimitiveComponent* OtherComp,
+	int32 OtherBodyIndex,
+	bool bFromSweep,
+	const FHitResult& SweepResult
+)
+{
+	if (OtherActor && (OtherActor != this))
+	{
+		UE_LOG(LogTemp, Warning, TEXT("Overlap with: %s"), *OtherActor->GetName());
+	}
 }
 
 void AEnemyCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputComponent)
