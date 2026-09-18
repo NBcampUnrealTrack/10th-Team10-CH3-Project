@@ -167,6 +167,8 @@ void AChapter3_ShooterGame_GameMode::ProcessGameOver(const FString& fail_reason)
     is_detection_timer_active_ = false;
     is_boss_map_timer_active_ = false;
     UE_LOG(LogTemp, Error, TEXT("GAME OVER: %s"), *fail_reason);
+
+    on_game_over_.Broadcast(fail_reason);
 }
 
 void AChapter3_ShooterGame_GameMode::ProcessGameVictory(const FString& victory_reason) {
@@ -174,4 +176,6 @@ void AChapter3_ShooterGame_GameMode::ProcessGameVictory(const FString& victory_r
     is_detection_timer_active_ = false;
     is_boss_map_timer_active_ = false;
     UE_LOG(LogTemp, Log, TEXT("VICTORY: %s"), *victory_reason);
+
+    on_game_victory_.Broadcast(victory_reason);
 }
