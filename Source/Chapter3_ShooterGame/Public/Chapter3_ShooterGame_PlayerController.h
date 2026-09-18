@@ -15,6 +15,7 @@ class AM1911WeaponView;
 class ADistractionCoin;
 class USlowMotionSkillComponent;
 class UAssassinationTargetComponent;
+class UUnlockInventoryComponent;
 
 USTRUCT()
 struct FWeaponViewSlotState
@@ -37,6 +38,9 @@ class CHAPTER3_SHOOTERGAME_API AChapter3_ShooterGame_PlayerController : public A
 
 public:
 	AChapter3_ShooterGame_PlayerController();
+
+    UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Unlock Inventory")
+    TObjectPtr<UUnlockInventoryComponent> unlockInventory_ = nullptr;
 
 protected:
 	virtual void BeginPlay() override;

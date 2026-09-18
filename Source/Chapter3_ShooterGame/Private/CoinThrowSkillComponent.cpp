@@ -19,6 +19,35 @@ UCoinThrowSkillComponent::UCoinThrowSkillComponent()
     PrimaryComponentTick.bCanEverTick = false;
 }
 
+void UCoinThrowSkillComponent::BeginPlay()
+{
+    maxCoinCount_ = FMath::Max(1, maxCoinCount_);
+    currentCoinCount_ = maxCoinCount_;
+    Super::BeginPlay();
+}
+
+int32 UCoinThrowSkillComponent::GetCurrentCoinCount() const
+{
+    return currentCoinCount_;
+}
+
+int32 UCoinThrowSkillComponent::GetMaxCoinCount() const
+{
+    return FMath::Max(1, maxCoinCount_);
+}
+
+bool UCoinThrowSkillComponent::TryRestoreCoin()
+{
+    if (!HasBegunPlay() || currentCoinCount_ >= GetMaxCoinCount())
+    {
+        return false;
+    }
+
+    ++currentCoinCount_;
+    onCoinCountChanged_.Broadcast(currentCoinCount_, GetMaxCoinCount());
+    return true;
+}
+
 void UCoinThrowSkillComponent::InitializeFromLegacySettings(TSubclassOf<ADistractionCoin> coinClass,
     float throwSpeed, float upwardSpeed, float cooldown)
 {
@@ -47,7 +76,7 @@ bool UCoinThrowSkillComponent::CanThrowCoin() const
     const APlayerController* controller = GetThrowingController();
     if (!world || !world->IsGameWorld() || world->IsPaused() || !IsValid(controller)
         || !controller->IsLocalController() || !controller->HasAuthority()
-        || !IsValid(controller->GetPawn()) || !coinClass_ || isThrowing_
+        || !IsValid(controller->GetPawn()) || !coinClass_ || isThrowing_ || currentCoinCount_ <= 0
         || !FMath::IsFinite(coinThrowSpeed_) || coinThrowSpeed_ <= 0.0f
         || !FMath::IsFinite(coinUpwardSpeed_) || coinUpwardSpeed_ < 0.0f
         || !FMath::IsFinite(cooldown_) || cooldown_ < 0.0f
@@ -129,12 +158,14 @@ bool UCoinThrowSkillComponent::TryThrowCoin()
     }
 
     nextCoinThrowTime_ = GetWorld()->GetTimeSeconds() + cooldown_;
+    --currentCoinCount_;
     onCoinThrown_.Broadcast(coin);
     if (IsValid(coin))
     {
         coin->LaunchCoin(viewRotation.Vector() * coinThrowSpeed_ + FVector::UpVector * coinUpwardSpeed_);
         UE_LOG(LogCoinThrowSkill, Log, TEXT("[CoinThrow] Launched %s"), *GetNameSafe(coin));
     }
+    onCoinCountChanged_.Broadcast(currentCoinCount_, GetMaxCoinCount());
     return true;
 }
 

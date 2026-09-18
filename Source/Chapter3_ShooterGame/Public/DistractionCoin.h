@@ -29,6 +29,12 @@ public:
     UFUNCTION(BlueprintPure, Category = "Coin")
     float GetCollisionRadius() const;
 
+    UFUNCTION(BlueprintCallable, Category = "Coin|Pickup")
+    bool TryCollect(APawn* collector);
+
+    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Coin|Pickup", meta = (ClampMin = "1.0", Units = "cm"))
+    float pickupRadius_ = 150.0f;
+
     UPROPERTY(BlueprintAssignable, Category = "Coin")
     FOnCoinLanded onCoinLanded_;
 
@@ -39,6 +45,9 @@ protected:
 
     UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Coin")
     TObjectPtr<USphereComponent> collision_ = nullptr;
+
+    UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Coin|Pickup")
+    TObjectPtr<USphereComponent> pickupSphere_ = nullptr;
 
     UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Coin")
     TObjectPtr<UStaticMeshComponent> coinMesh_ = nullptr;
@@ -58,18 +67,18 @@ protected:
     UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Coin", meta = (ClampMin = "0.1", Units = "s"))
     float flightLifeSpan_ = 0.0f;
 
-    UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Coin", meta = (ClampMin = "0.1", Units = "s"))
-    float landedLifeSpan_ = 0.0f;
-
     UPROPERTY(VisibleInstanceOnly, BlueprintReadOnly, Category = "Coin")
     bool hasLanded_ = false;
 
 private:
     void FitCoinMesh();
     void IgnoreThrower();
+    void UpdatePickupRadius();
 
     UFUNCTION()
     void HandleProjectileStop(const FHitResult& hitResult);
 
     bool hasLaunched_ = false;
+    bool isCollected_ = false;
+    bool isCollecting_ = false;
 };
