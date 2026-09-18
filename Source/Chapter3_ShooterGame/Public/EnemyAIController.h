@@ -76,6 +76,7 @@ public:
 	void MoveToPlayerLocation(void);
 	void StopEnemy(void);
 
+	void PauseEnemyBehaviorTimer(float pauseTime);
 	void ClearControllerTimer(void);
 
 	void Fire(void);

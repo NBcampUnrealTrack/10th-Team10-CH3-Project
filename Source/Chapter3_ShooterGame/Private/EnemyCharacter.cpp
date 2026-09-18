@@ -45,7 +45,6 @@ void AEnemyCharacter::AlertCalculation(void)
 			if (APawn* playerPawn = UGameplayStatics::GetPlayerPawn(GetWorld(), 0))
 			{
 				float distanceToPlayer = FVector::Distance(GetActorLocation(), playerPawn->GetActorLocation());
-				enemyAIController->SetFocus(playerPawn);
 
 				if (distanceToPlayer > sightRadius_ / 2.0f)
 				{
@@ -199,9 +198,34 @@ void AEnemyCharacter::OnOverlapBegin(UPrimitiveComponent* OverlappedComp, AActor
 	UPrimitiveComponent* OtherComp, int32 OtherBodyIndex,
 	bool bFromSweep, const FHitResult& SweepResult)
 {
-	if (ADistractionCoin* verifiedCoin = Cast<ADistractionCoin>(OtherActor))
+	if (OtherActor->IsA<ADistractionCoin>())
 	{
-		GEngine->AddOnScreenDebugMessage(-1, 5.0f, FColor::Red, FString::Printf(TEXT("Overlap Coin!")));
+		ADistractionCoin* coin = Cast<ADistractionCoin>(OtherActor);
+		coin->onCoinLanded_.AddDynamic(this, &AEnemyCharacter::AcceptedLocation);
+	}
+}
+void AEnemyCharacter::AcceptedLocation(FVector landingLocation)
+{
+	FVector Direction = landingLocation - GetActorLocation();
+
+	FRotator LookAtRotation = Direction.Rotation();
+	LookAtRotation.Pitch = 0.0f;
+	LookAtRotation.Roll = 0.0f;
+
+	if (AEnemyAIController* enemyAIController = Cast<AEnemyAIController>(GetController()))
+	{
+		if (alertType_ != EAlertType::patrol)
+		{
+			return;
+		}
+
+		if (enemyAIController->GetFocusActor())
+		{
+			enemyAIController->ClearFocus(EAIFocusPriority::Gameplay);
+		}
+
+		SetActorRotation(LookAtRotation);
+		enemyAIController->PauseEnemyBehaviorTimer(FMath::FRandRange(5.0f, 10.0f));
 	}
 }
 
