@@ -5,6 +5,9 @@
 #include "Chapter3_ShooterGame_GameMode.generated.h"
 
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnScoreChangedSignature, int32, new_score);
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnGameOverSignature, const FString&, fail_reason);
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnGameVictorySignature, const FString&, victory_reason);
+
 
 UCLASS()
 class CHAPTER3_SHOOTERGAME_API AChapter3_ShooterGame_GameMode : public AGameMode
@@ -21,24 +24,46 @@ public:
     UFUNCTION(BlueprintCallable, Category = "Score")
     void AddScore(int32 amount);
 
-    UFUNCTION(BlueprintPure, Category = "Score")
+    UFUNCTION(BlueprintPure, Category = "UI|Score")
     int32 GetCurrentScore() const;
 
-    UPROPERTY(BlueprintAssignable, Category = "Score")
+    UPROPERTY(BlueprintAssignable, Category = "UI|Events")
     FOnScoreChangedSignature on_score_changed_;
+
+    UPROPERTY(BlueprintAssignable, Category = "UI|Events")
+    FOnGameOverSignature on_game_over_;
+
+    UPROPERTY(BlueprintAssignable, Category = "UI|Events")
+    FOnGameVictorySignature on_game_victory_;
+
+    UFUNCTION(BlueprintPure, Category = "UI|Timer")
+    float GetDetectionRemainingTime() const { return detection_remaining_time_; }
+
+    UFUNCTION(BlueprintPure, Category = "UI|Timer")
+    bool IsDetectionTimerActive() const { return is_detection_timer_active_; }
+
+    UFUNCTION(BlueprintPure, Category = "UI|Timer")
+    float GetBossMapRemainingTime() const { return boss_map_remaining_time_; }
+
+    UFUNCTION(BlueprintPure, Category = "UI|Timer")
+    bool IsBossMapTimerActive() const { return is_boss_map_timer_active_; }
+
+    UFUNCTION(BlueprintPure, Category = "UI|Status")
+    bool IsGameOver() const { return is_game_over_; }
+
+    UFUNCTION(BlueprintPure, Category = "UI|Status")
+    bool IsGameCleared() const { return is_game_cleared_; }
+
+    // --- 적 AI가 플레이어를 감지하여 타이머 호출 ---
+    UFUNCTION(BlueprintCallable, Category = "Mission")
+    void ReportPlayerDetected();
 
     // ==========================================
     // 임시 함수 사용 (접두어 통일: Dummy_)
     // ==========================================
 
     UFUNCTION(BlueprintCallable, Category = "TeamDummy")
-    void Dummy_ReceivePlayerHealth(float current_health);
-
-    UFUNCTION(BlueprintCallable, Category = "TeamDummy")
     void Dummy_ReceiveEnemyEliminated();
-
-    UFUNCTION(BlueprintCallable, Category = "TeamDummy")
-    void Dummy_ReceivePlayerDetected();
 
     UFUNCTION(BlueprintCallable, Category = "TeamDummy")
     void Dummy_ReceivePlayerEscaped();
@@ -56,6 +81,10 @@ public:
 private:
     void ProcessGameOver(const FString& fail_reason);
     void ProcessGameVictory(const FString& victory_reason);
+
+    // --- 상태 확인용 검사 함수 ---
+    void CheckPlayerDetectionFromAI();
+    void CheckPlayerDeath();
 
     // --- 상태 변수 ---
     UPROPERTY(VisibleAnywhere, Category = "Mission")

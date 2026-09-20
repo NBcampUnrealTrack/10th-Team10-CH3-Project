@@ -1,5 +1,8 @@
 ﻿#include "Chapter3_ShooterGame_GameMode.h"
 #include "Kismet/GameplayStatics.h"
+#include "EngineUtils.h"
+#include "EnemyAIController.h"
+#include "Chapter3_ShooterGame_Character.h"
 
 AChapter3_ShooterGame_GameMode::AChapter3_ShooterGame_GameMode() {
     PrimaryActorTick.bCanEverTick = true;
@@ -29,7 +32,19 @@ void AChapter3_ShooterGame_GameMode::Tick(float delta_seconds) {
         return;
     }
 
-    if (is_detection_timer_active_) {
+    // 사망 여부 검사
+    CheckPlayerDeath();
+
+    // 사망 판정 시 ProcessGameOver 실행
+    if (is_game_over_) {
+        return;
+    }
+
+    // 발각 상태 검사 및 발각 후 3분 타이머
+    if (!is_detection_timer_active_) {
+        CheckPlayerDetectionFromAI();
+    }
+    else {
         detection_remaining_time_ -= delta_seconds;
         if (detection_remaining_time_ <= 0.0f) {
             detection_remaining_time_ = 0.0f;
@@ -38,6 +53,8 @@ void AChapter3_ShooterGame_GameMode::Tick(float delta_seconds) {
         }
     }
 
+
+    // 보스 맵 5분 제한 시간 타이머
     if (is_boss_map_timer_active_) {
         boss_map_remaining_time_ -= delta_seconds;
         if (boss_map_remaining_time_ <= 0.0f) {
@@ -46,6 +63,48 @@ void AChapter3_ShooterGame_GameMode::Tick(float delta_seconds) {
             ProcessGameOver(TEXT("[타임아웃] 보스 맵 제한 시간 초과로 패배했습니다."));
         }
     }
+}
+
+    // 플레이어 사망 상태 검사 (Character 클래스의 IsDead() 호출)
+    void AChapter3_ShooterGame_GameMode::CheckPlayerDeath() {
+        APawn* player_pawn = UGameplayStatics::GetPlayerPawn(GetWorld(), 0);
+        if (!player_pawn) return;
+
+        if (AChapter3_ShooterGame_Character* player_character = Cast<AChapter3_ShooterGame_Character>(player_pawn)) {
+            if (player_character->IsDead()) {
+                ProcessGameOver(TEXT("플레이어 체력이 0이 되어 사망했습니다."));
+            }
+        }
+    }
+
+// GameMode가 직접 적 AI의 상태를 호출/확인하는 함수
+void AChapter3_ShooterGame_GameMode::CheckPlayerDetectionFromAI() {
+    if (!GetWorld()) return;
+
+    // 월드 내의 모든 AEnemyAIController를 탐색
+    for (TActorIterator<AEnemyAIController> It(GetWorld()); It; ++It) {
+        AEnemyAIController* AIController = *It;
+
+        // 적 AI가 플레이어를 감지(isCaptured_ == true)했는지 직접 확인
+        if (AIController && AIController->isCaptured_) {
+            UE_LOG(LogTemp, Warning, TEXT("[GameMode] 적 AI 발각 확인 -> 3분 제한시간 타이머 시작"));
+            is_detection_timer_active_ = true;
+            detection_remaining_time_ = kDetectionTimeLimit;
+            break; // 한 명이라도 감지했으면 타이머를 켜고 즉시 탐색 종료
+        }
+    }
+}
+
+void AChapter3_ShooterGame_GameMode::ReportPlayerDetected()
+{
+    if (is_game_over_ || is_game_cleared_ || is_detection_timer_active_)
+    {
+        return;
+    }
+
+    UE_LOG(LogTemp, Warning, TEXT("[GameMode] ReportPlayerDetected() 호출됨 -> 3분 타이머 시작"));
+    is_detection_timer_active_ = true;
+    detection_remaining_time_ = kDetectionTimeLimit;
 }
 
 // --- 점수 로직 ---
@@ -63,29 +122,12 @@ int32 AChapter3_ShooterGame_GameMode::GetCurrentScore() const {
 // 임시
 // ==========================================
 
-void AChapter3_ShooterGame_GameMode::Dummy_ReceivePlayerHealth(float current_health) {
-    if (is_game_over_ || is_game_cleared_) return;
-
-    UE_LOG(LogTemp, Warning, TEXT("[DUMMY] 플레이어 체력 수신: %.1f"), current_health);
-    if (current_health <= 0.0f) {
-        ProcessGameOver(TEXT("플레이어 체력이 0이 되어 사망했습니다."));
-    }
-}
-
 void AChapter3_ShooterGame_GameMode::Dummy_ReceiveEnemyEliminated() {
     if (is_game_over_ || is_game_cleared_) return;
 
     UE_LOG(LogTemp, Warning, TEXT("[DUMMY] 적 처치 신호 수신됨"));
     is_target_eliminated_ = true;
     AddScore(100);
-}
-
-void AChapter3_ShooterGame_GameMode::Dummy_ReceivePlayerDetected() {
-    if (is_game_over_ || is_game_cleared_ || is_detection_timer_active_) return;
-
-    UE_LOG(LogTemp, Warning, TEXT("[DUMMY] 플레이어 발각 신호 수신됨 -> 3분 타이머 시작"));
-    is_detection_timer_active_ = true;
-    detection_remaining_time_ = kDetectionTimeLimit;
 }
 
 void AChapter3_ShooterGame_GameMode::Dummy_ReceivePlayerEscaped() {
@@ -125,6 +167,8 @@ void AChapter3_ShooterGame_GameMode::ProcessGameOver(const FString& fail_reason)
     is_detection_timer_active_ = false;
     is_boss_map_timer_active_ = false;
     UE_LOG(LogTemp, Error, TEXT("GAME OVER: %s"), *fail_reason);
+
+    on_game_over_.Broadcast(fail_reason);
 }
 
 void AChapter3_ShooterGame_GameMode::ProcessGameVictory(const FString& victory_reason) {
@@ -132,4 +176,6 @@ void AChapter3_ShooterGame_GameMode::ProcessGameVictory(const FString& victory_r
     is_detection_timer_active_ = false;
     is_boss_map_timer_active_ = false;
     UE_LOG(LogTemp, Log, TEXT("VICTORY: %s"), *victory_reason);
+
+    on_game_victory_.Broadcast(victory_reason);
 }

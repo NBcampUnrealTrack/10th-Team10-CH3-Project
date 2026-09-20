@@ -1,5 +1,7 @@
 ﻿#include "EnemyCharacter.h"
 #include "EnemyAIController.h"
+#include "DistractionCoin.h"
+#include "MainGameState.h"
 #include "Kismet/GameplayStatics.h"
 #include "GameFramework/CharacterMovementComponent.h"
 
@@ -8,28 +10,15 @@ AEnemyCharacter::AEnemyCharacter()
 	AIControllerClass = AEnemyAIController::StaticClass();
 	AutoPossessAI = EAutoPossessAI::PlacedInWorldOrSpawned;
 
-	UCharacterMovementComponent* Movement = GetCharacterMovement();
-	if (Movement)
-	{
-		runSpeed_ = walkSpeed_ * 1.5f;
+	soundTriggerCollision_ = CreateDefaultSubobject<USphereComponent>(TEXT("SoundTriggerCollision"));
+	soundTriggerCollision_->SetupAttachment(RootComponent);
 
-		if (enemyType_ == EEnemyType::bodyguard)
-		{
-			walkSpeed_ *= 0.75f;
-			runSpeed_ *= 0.75f;
+	soundTriggerCollision_->InitSphereRadius(300.0f);
+	soundTriggerCollision_->SetRelativeLocation(FVector(0.0f, 0.0f, 75.0f));
 
-			Movement->MaxWalkSpeed = walkSpeed_;
-		}
-		else
-		{
-			Movement->MaxWalkSpeed = walkSpeed_;
-		}
-
-		//Character가 이동하는 방향을 바라보도록 설정합니다.
-		Movement->bOrientRotationToMovement = true;
-		//Character가 회전할 때의 속도를 설정합니다.
-		Movement->RotationRate = FRotator(0.0f, 540.0f, 0.0f);
-	}
+	soundTriggerCollision_->CanCharacterStepUpOn = ECB_No;
+	soundTriggerCollision_->SetCollisionProfileName(TEXT("OverlapAll"));
+	soundTriggerCollision_->SetGenerateOverlapEvents(true);
 
 	PrimaryActorTick.bCanEverTick = false;
 }
@@ -56,6 +45,7 @@ void AEnemyCharacter::AlertCalculation(void)
 			if (APawn* playerPawn = UGameplayStatics::GetPlayerPawn(GetWorld(), 0))
 			{
 				float distanceToPlayer = FVector::Distance(GetActorLocation(), playerPawn->GetActorLocation());
+				enemyAIController->SetFocus(playerPawn);
 
 				if (distanceToPlayer > sightRadius_ / 2.0f)
 				{
@@ -64,8 +54,6 @@ void AEnemyCharacter::AlertCalculation(void)
 						//적 AI의 시야 범위 안에 처음 들어온 경우
 						if (alertType_ != EAlertType::caution)
 						{
-							GEngine->AddOnScreenDebugMessage(-1, 1.0f, FColor::Orange, FString::Printf(TEXT("Mode: Caution!")));
-
 							alertType_ = EAlertType::caution;
 							SetMovementSpeed();
 						}
@@ -81,10 +69,7 @@ void AEnemyCharacter::AlertCalculation(void)
 						//적 AI의 발각 범위 안에 처음 들어온 경우
 						if (alertType_ != EAlertType::detection)
 						{
-							GEngine->AddOnScreenDebugMessage(-1, 1.0f, FColor::Orange, FString::Printf(TEXT("Mode: Detection!")));
-
 							alertType_ = EAlertType::detection;
-							enemyAIController->ClearFocus(EAIFocusPriority::Gameplay);
 							SetMovementSpeed();
 						}
 					}
@@ -100,11 +85,10 @@ void AEnemyCharacter::AlertCalculation(void)
 						GEngine->AddOnScreenDebugMessage(-1, 1.0f, FColor::Red, FString::Printf(TEXT("Mode: Attack!")));
 
 						alertType_ = EAlertType::attack;
-						enemyAIController->SetFocus(playerPawn);
 						enemyAIController->StopEnemy();
 
 						//적 AI 공격 구현
-						GetWorldTimerManager().SetTimer(EnemyAttackIntervalTimer_, this, &AEnemyCharacter::StartFire, 2.0f, true);
+						GetWorldTimerManager().SetTimer(EnemyAttackIntervalTimer_, this, &AEnemyCharacter::StartFire, 1.0f, true);
 					}
 					return;
 				}
@@ -116,8 +100,6 @@ void AEnemyCharacter::AlertCalculation(void)
 		{
 			if (alertType_ != EAlertType::patrol)
 			{
-				GEngine->AddOnScreenDebugMessage(-1, 1.0f, FColor::Green, FString::Printf(TEXT("Mode: Patrol!")));
-
 				alertType_ = EAlertType::patrol;
 				GetWorldTimerManager().ClearTimer(EnemyAttackIntervalTimer_);
 				SetMovementSpeed();
@@ -143,6 +125,34 @@ void AEnemyCharacter::DestroyEnemy(void)
 void AEnemyCharacter::BeginPlay()
 {
 	Super::BeginPlay();
+
+	if (soundTriggerCollision_)
+	{
+		soundTriggerCollision_->OnComponentBeginOverlap.AddDynamic(this, &AEnemyCharacter::OnOverlapBegin);
+	}
+
+	UCharacterMovementComponent* Movement = GetCharacterMovement();
+	if (Movement)
+	{
+		runSpeed_ = walkSpeed_ * 1.5f;
+
+		if (enemyType_ == EEnemyType::bodyguard)
+		{
+			walkSpeed_ *= 0.75f;
+			runSpeed_ *= 0.75f;
+
+			Movement->MaxWalkSpeed = walkSpeed_;
+		}
+		else
+		{
+			Movement->MaxWalkSpeed = walkSpeed_;
+		}
+
+		//Character가 이동하는 방향을 바라보도록 설정합니다.
+		Movement->bOrientRotationToMovement = true;
+		//Character가 회전할 때의 속도를 설정합니다.
+		Movement->RotationRate = FRotator(0.0f, 540.0f, 0.0f);
+	}
 
 	alertType_ = EAlertType::patrol;
 	if (AEnemyAIController* enemyAIController = Cast<AEnemyAIController>(GetController()))
@@ -171,15 +181,28 @@ float AEnemyCharacter::TakeDamage(float DamageAmount, struct FDamageEvent const&
 void AEnemyCharacter::StartFire(void) {
 	if (AEnemyAIController* enemyAIController = Cast<AEnemyAIController>(GetController()))
 	{
-		GEngine->AddOnScreenDebugMessage(-1, 1.0f, FColor::Red, FString::Printf(TEXT("Enemy Attack Successed!")));
 		enemyAIController->Fire();
 	}
 }
 void AEnemyCharacter::OnDeath(void) {
 	//적 AI 사망 정보 GameState에 전송해야 함!
+	if (AMainGameState* mainGameState = GetWorld()->GetGameState<AMainGameState>())
+	{
+		mainGameState->SetPlayerKillCount(mainGameState->GetPlayerKillCount() + 1);
+	}
 
 	//적 AI 사망 로직 구현
 	DestroyEnemy();
+}
+
+void AEnemyCharacter::OnOverlapBegin(UPrimitiveComponent* OverlappedComp, AActor* OtherActor,
+	UPrimitiveComponent* OtherComp, int32 OtherBodyIndex,
+	bool bFromSweep, const FHitResult& SweepResult)
+{
+	if (ADistractionCoin* verifiedCoin = Cast<ADistractionCoin>(OtherActor))
+	{
+		GEngine->AddOnScreenDebugMessage(-1, 5.0f, FColor::Red, FString::Printf(TEXT("Overlap Coin!")));
+	}
 }
 
 void AEnemyCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputComponent)

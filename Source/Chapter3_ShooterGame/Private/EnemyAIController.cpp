@@ -51,19 +51,18 @@ void AEnemyAIController::OnPerceptionUpdated(AActor* Actor, FAIStimulus Stimulus
 {
 	if (Stimulus.WasSuccessfullySensed())
 	{
-		GEngine->AddOnScreenDebugMessage(-1, 1.0f, FColor::Green, FString::Printf(TEXT("CapturedPlayer!")));
-
 		//적 AI가 플레이어를 감지했을 때
 		isCaptured_ = true;
 		GetWorldTimerManager().ClearTimer(enemyBehaviorTimer_);
-		//SetFocus(playerPawn_);
 	}
 	else
 	{
+		GEngine->AddOnScreenDebugMessage(-1, 1.0f, FColor::Green, FString::Printf(TEXT("Player Lose")));
+
 		//적 AI가 플레이어를 감지하지 못했을 때
 		isCaptured_ = false;
-		GetWorldTimerManager().SetTimer(enemyBehaviorTimer_, this, &AEnemyAIController::MoveToRandomLocation, 2.0f, true);
-		//ClearFocus(EAIFocusPriority::Gameplay);
+		ClearFocus(EAIFocusPriority::Gameplay);
+		GetWorldTimerManager().SetTimer(enemyBehaviorTimer_, this, &AEnemyAIController::MoveToRandomLocation, FMath::FRandRange(2.0f, 3.5f), true);
 	}
 }
 
@@ -80,7 +79,7 @@ void AEnemyAIController::BeginPlay()
 		AIPerception->OnTargetPerceptionUpdated.AddDynamic(this, &AEnemyAIController::OnPerceptionUpdated);
 	}
 
-	GetWorldTimerManager().SetTimer(enemyBehaviorTimer_, this, &AEnemyAIController::MoveToRandomLocation, 2.0f, true);
+	GetWorldTimerManager().SetTimer(enemyBehaviorTimer_, this, &AEnemyAIController::MoveToRandomLocation, FMath::FRandRange(2.0f, 3.5f), true);
 }
 void AEnemyAIController::OnPossess(APawn* InPawn)
 {
@@ -89,8 +88,6 @@ void AEnemyAIController::OnPossess(APawn* InPawn)
 
 void AEnemyAIController::MoveToRandomLocation(void)
 {
-	GEngine->AddOnScreenDebugMessage(-1, 1.0f, FColor::Green, FString::Printf(TEXT("MoveToRandomLocation!")));
-
 	if (myPawn_)
 	{
 		//현재 월드에서 사용 중인 NavigationSystem을 가져옵니다.
@@ -178,6 +175,17 @@ void AEnemyAIController::Fire(void)
 
 	FHitResult hitResult = {};
 	world->LineTraceSingleByChannel(hitResult, start, end, ECC_Visibility, queryParams);
+
+	DrawDebugLine(
+		GetWorld(),
+		start,
+		end,
+		FColor::White,
+		false, // 지속 지속 여부
+		1.0f,
+		0, // 플레이어 우선순위
+		0.5f // 선 두께
+	);
 
 	if (hitResult.bBlockingHit)
 	{
