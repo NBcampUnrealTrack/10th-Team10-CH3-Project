@@ -137,9 +137,10 @@ void AEnemyCharacter::BeginPlay()
 
 		if (enemyType_ == EEnemyType::bodyguard)
 		{
+			defense_ = 2.5f;
+
 			walkSpeed_ *= 0.75f;
 			runSpeed_ *= 0.75f;
-
 			Movement->MaxWalkSpeed = walkSpeed_;
 		}
 		else
