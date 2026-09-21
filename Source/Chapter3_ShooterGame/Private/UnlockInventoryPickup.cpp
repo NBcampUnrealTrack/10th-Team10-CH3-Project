@@ -1,10 +1,13 @@
 #include "UnlockInventoryPickup.h"
 
 #include "UnlockInventoryComponent.h"
+#include "Chapter3GameInstance.h"
 #include "Components/SphereComponent.h"
+#include "PickupRange.h"
 #include "Components/StaticMeshComponent.h"
 #include "GameFramework/Pawn.h"
 #include "GameFramework/PlayerController.h"
+#include "Kismet/GameplayStatics.h"
 
 DEFINE_LOG_CATEGORY_STATIC(LogUnlockPickup, Log, All);
 
@@ -38,7 +41,27 @@ void AUnlockInventoryPickup::BeginPlay()
     if (itemId_.IsNone())
     {
         UE_LOG(LogUnlockPickup, Warning, TEXT("%s: Assign Item ID matching the player's Unlock Inventory Item Definitions."), *GetName());
+        return;
     }
+
+    const UChapter3GameInstance* progress = Cast<UChapter3GameInstance>(UGameplayStatics::GetGameInstance(this));
+    if (IsValid(progress) && progress->IsProgressReady() && progress->HasCollectedItem(itemId_))
+    {
+        isCollected_ = true;
+        SetActorEnableCollision(false);
+        SetActorHiddenInGame(true);
+        Destroy();
+    }
+}
+
+bool AUnlockInventoryPickup::IsCollectorInRange(const APawn* collector) const
+{
+    if (!IsValid(collector) || !IsValid(pickupSphere_) || isCollected_ || IsActorBeingDestroyed())
+    {
+        return false;
+    }
+
+    return Chapter3PickupRange::Contains(pickupSphere_, collector);
 }
 
 bool AUnlockInventoryPickup::TryCollect(APawn* collector)
@@ -48,7 +71,7 @@ bool AUnlockInventoryPickup::TryCollect(APawn* collector)
         return false;
     }
 
-    if (!IsValid(pickupSphere_) || !pickupSphere_->IsOverlappingActor(collector))
+    if (!IsCollectorInRange(collector))
     {
         return false;
     }
@@ -72,6 +95,11 @@ bool AUnlockInventoryPickup::TryCollect(APawn* collector)
     if (result == EUnlockInventoryResult::InvalidItem)
     {
         UE_LOG(LogUnlockPickup, Warning, TEXT("%s: Item ID '%s' is not registered in the player's Item Definitions."), *GetName(), *itemId_.ToString());
+        return false;
+    }
+    if (result == EUnlockInventoryResult::ProgressUnavailable)
+    {
+        UE_LOG(LogUnlockPickup, Warning, TEXT("%s: Progress data is unavailable; pickup was not consumed."), *GetName());
         return false;
     }
 
