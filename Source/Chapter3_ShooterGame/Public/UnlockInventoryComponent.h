@@ -41,7 +41,8 @@ enum class EUnlockInventoryResult : uint8
 {
     InvalidItem,
     AlreadyUnlocked,
-    Unlocked
+    Unlocked,
+    ProgressUnavailable
 };
 
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FOnInventoryItemUnlocked, int32, slotIndex, FUnlockInventorySlot, slot);

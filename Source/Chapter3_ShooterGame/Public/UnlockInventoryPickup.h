@@ -28,6 +28,9 @@ public:
     UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Unlock Pickup", meta = (ClampMin = "1.0", Units = "cm"))
     float pickupRadius_ = 75.0f;
 
+    // 겹침 이벤트 설정과 무관하게 수집 구와 플레이어 캡슐의 거리를 검사한다.
+    bool IsCollectorInRange(const APawn* collector) const;
+
     // 획득 범위 안에서 상호작용할 때 호출한다. 중복 획득은 소비하지만 해금 알림은 반복하지 않는다.
     UFUNCTION(BlueprintCallable, Category = "Unlock Pickup")
     bool TryCollect(APawn* collector);

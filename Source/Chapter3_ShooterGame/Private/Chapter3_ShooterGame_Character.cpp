@@ -2,7 +2,9 @@
 
 #include "Chapter3_ShooterGame_Character.h"
 #include "UnlockInventoryPickup.h"
+#include "BonusPickup.h"
 #include "DistractionCoin.h"
+#include "EngineUtils.h"
 #include "GameFramework/CharacterMovementComponent.h"
 #include "GameFramework/PlayerController.h"
 #include "Camera/CameraComponent.h"
@@ -176,8 +178,23 @@ void AChapter3_ShooterGame_Character::Interact()
     GetOverlappingActors(nearbyPickups);
     nearbyPickups.RemoveAll([](const AActor* actor)
     {
-        return !IsValid(actor) || (!actor->IsA<AUnlockInventoryPickup>() && !actor->IsA<ADistractionCoin>());
+        return !IsValid(actor) || !actor->IsA<ADistractionCoin>();
     });
+    // 수집품은 겹침 캐시가 비어 있어도 실제 범위로 찾는다. 동전의 기존 판정은 유지한다.
+    for (TActorIterator<AUnlockInventoryPickup> it(GetWorld()); it; ++it)
+    {
+        if (it->IsCollectorInRange(this))
+        {
+            nearbyPickups.Add(*it);
+        }
+    }
+    for (TActorIterator<ABonusPickup> it(GetWorld()); it; ++it)
+    {
+        if (it->IsCollectorInRange(this))
+        {
+            nearbyPickups.Add(*it);
+        }
+    }
     const FVector collectorLocation = GetActorLocation();
     nearbyPickups.Sort([collectorLocation](const AActor& left, const AActor& right)
     {
@@ -189,6 +206,12 @@ void AChapter3_ShooterGame_Character::Interact()
     {
         AUnlockInventoryPickup* pickup = Cast<AUnlockInventoryPickup>(actor);
         if (IsValid(pickup) && pickup->TryCollect(this))
+        {
+            return;
+        }
+
+        ABonusPickup* bonus = Cast<ABonusPickup>(actor);
+        if (IsValid(bonus) && bonus->TryCollect(this))
         {
             return;
         }
