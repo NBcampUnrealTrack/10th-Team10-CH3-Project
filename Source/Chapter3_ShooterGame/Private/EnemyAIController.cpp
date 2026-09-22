@@ -19,7 +19,7 @@ AEnemyAIController::AEnemyAIController()
 	SightConfig->LoseSightRadius = loseSightRadius_;
 	// 시야각
 	SightConfig->PeripheralVisionAngleDegrees = 90.0f;
-	SightConfig->SetMaxAge(5.0f);
+	SightConfig->SetMaxAge(3.0f);
 
 	SightConfig->DetectionByAffiliation.bDetectEnemies = true;
 	SightConfig->DetectionByAffiliation.bDetectNeutrals = true;
@@ -28,9 +28,6 @@ AEnemyAIController::AEnemyAIController()
 	AIPerception->ConfigureSense(*SightConfig);
 	AIPerception->SetDominantSense(SightConfig->GetSenseImplementation());
 
-	fireRange_ = 10000.0f;
-	damage_ = 20.0f;
-	fireInterval_ = 0.2f;
 	reloadDuration_ = 0.0f;
 }
 
@@ -51,19 +48,21 @@ void AEnemyAIController::OnPerceptionUpdated(AActor* Actor, FAIStimulus Stimulus
 {
 	if (Stimulus.WasSuccessfullySensed())
 	{
+		GEngine->AddOnScreenDebugMessage(-1, 1.0f, FColor::Green, FString::Printf(TEXT("Captured Player!")));
+
 		//적 AI가 플레이어를 감지했을 때
 		isCaptured_ = true;
 		SetFocus(playerPawn_, EAIFocusPriority::Gameplay);
 		GetWorldTimerManager().ClearTimer(enemyBehaviorTimer_);
+		MoveToPlayerLocation();
 	}
 	else
 	{
-		GEngine->AddOnScreenDebugMessage(-1, 1.0f, FColor::Green, FString::Printf(TEXT("Player Lose")));
-
 		//적 AI가 플레이어를 감지하지 못했을 때
 		isCaptured_ = false;
 		ClearFocus(EAIFocusPriority::Gameplay);
-		GetWorldTimerManager().SetTimer(enemyBehaviorTimer_, this, &AEnemyAIController::MoveToRandomLocation, FMath::FRandRange(2.0f, 3.5f), true);
+
+		MoveEnemy();
 	}
 }
 
@@ -79,14 +78,37 @@ void AEnemyAIController::BeginPlay()
 	{
 		AIPerception->OnTargetPerceptionUpdated.AddDynamic(this, &AEnemyAIController::OnPerceptionUpdated);
 	}
-
-	GetWorldTimerManager().SetTimer(enemyBehaviorTimer_, this, &AEnemyAIController::MoveToRandomLocation, FMath::FRandRange(2.0f, 3.5f), true);
 }
 void AEnemyAIController::OnPossess(APawn* InPawn)
 {
 	Super::OnPossess(InPawn);
 }
+void AEnemyAIController::MoveToDesignatedLocation(void)
+{
+	if (myPawn_)
+	{
+		if (moveRootPawns_[nowMoveIndex_])
+		{
+			GEngine->AddOnScreenDebugMessage(-1, 1.0f, FColor::Green, FString::Printf(TEXT("Move To Designated Location!")));
+			goalPoint_ = moveRootPawns_[nowMoveIndex_]->GetActorLocation();
+		}
+		else
+		{
+			goalPoint_ = myPawn_->GetActorLocation();
+		}
 
+		if (nowMoveIndex_ < (moveRootPawns_.Num() - 1))
+		{
+			nowMoveIndex_++;
+		}
+		else
+		{
+			nowMoveIndex_ = 0;
+		}
+
+		MoveToLocation(goalPoint_);
+	}
+}
 void AEnemyAIController::MoveToRandomLocation(void)
 {
 	if (myPawn_)
@@ -115,6 +137,18 @@ void AEnemyAIController::MoveToPlayerLocation(void)
 		MoveToLocation(goalPoint_);
 	}
 }
+
+void AEnemyAIController::MoveEnemy(void)
+{
+	if (moveRandom_)
+	{
+		GetWorldTimerManager().SetTimer(enemyBehaviorTimer_, this, &AEnemyAIController::MoveToRandomLocation, FMath::FRandRange(2.0f, 3.5f), true);
+	}
+	else
+	{
+		GetWorldTimerManager().SetTimer(enemyBehaviorTimer_, this, &AEnemyAIController::MoveToDesignatedLocation, FMath::FRandRange(2.0f, 3.5f), true);
+	}
+}
 void AEnemyAIController::StopEnemy(void)
 {
 	StopMovement();
@@ -123,7 +157,15 @@ void AEnemyAIController::StopEnemy(void)
 void AEnemyAIController::PauseEnemyBehaviorTimer(float pauseTime)
 {
 	GetWorldTimerManager().ClearTimer(enemyBehaviorTimer_);
-	GetWorldTimerManager().SetTimer(enemyBehaviorTimer_, this, &AEnemyAIController::MoveToRandomLocation, FMath::FRandRange(2.0f, 3.5f), true, pauseTime);
+
+	if (moveRandom_)
+	{
+		GetWorldTimerManager().SetTimer(enemyBehaviorTimer_, this, &AEnemyAIController::MoveToRandomLocation, FMath::FRandRange(2.0f, 3.5f), true, pauseTime);
+	}
+	else
+	{
+		GetWorldTimerManager().SetTimer(enemyBehaviorTimer_, this, &AEnemyAIController::MoveToDesignatedLocation, FMath::FRandRange(2.0f, 3.5f), true, pauseTime);
+	}
 }
 void AEnemyAIController::ClearControllerTimer(void)
 {

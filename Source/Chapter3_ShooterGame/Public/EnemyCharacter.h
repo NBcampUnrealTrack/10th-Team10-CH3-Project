@@ -28,6 +28,8 @@ class CHAPTER3_SHOOTERGAME_API AEnemyCharacter : public ACharacter
 public:
 	AEnemyCharacter();
 
+	void SendMoveRootPawns(void);
+
 	void SetMovementSpeed(void);
 	void AlertCalculation(void);
 	void DestroyEnemy(void);
@@ -36,6 +38,10 @@ public:
 	float walkSpeed_ = 300.0f;
 	UPROPERTY(VisibleAnywhere, Category = "AI")
 	float runSpeed_ = 0.0f;
+
+	UPROPERTY(EditAnyWhere, BlueprintReadWrite, Category = "AI")
+	TArray<APawn*> moveRootPawns_;
+
 	UPROPERTY(EditAnywhere, Category = "Defense")
 	float defense_ = 0.0f;
 	UPROPERTY(EditAnywhere, Category = "Health")
@@ -53,6 +59,7 @@ protected:
 	USphereComponent* soundTriggerCollision_;
 
 	virtual void BeginPlay() override;
+	virtual void EndPlay(const EEndPlayReason::Type EndPlayReason) override;
 	virtual float TakeDamage(float DamageAmount, struct FDamageEvent const& DamageEvent, AController* EventInstigator, AActor* DamageCauser) override;
 
 	void StartFire(void);

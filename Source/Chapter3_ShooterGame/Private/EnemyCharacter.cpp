@@ -23,6 +23,21 @@ AEnemyCharacter::AEnemyCharacter()
 
 	PrimaryActorTick.bCanEverTick = false;
 }
+
+void AEnemyCharacter::SendMoveRootPawns(void)
+{
+	if (AEnemyAIController* enemyAIController = Cast<AEnemyAIController>(GetController()))
+	{
+		if (moveRootPawns_.Num() < 1)
+		{
+			enemyAIController->moveRandom_ = true;
+			return;
+		}
+		enemyAIController->moveRandom_ = false;
+		enemyAIController->moveRootPawns_ = moveRootPawns_;
+	}
+}
+
 void AEnemyCharacter::SetMovementSpeed(void)
 {
 	if (UCharacterMovementComponent* Movement = GetCharacterMovement())
@@ -178,9 +193,23 @@ void AEnemyCharacter::BeginPlay()
 	if (AEnemyAIController* enemyAIController = Cast<AEnemyAIController>(GetController()))
 	{
 		sightRadius_ = enemyAIController->GetSightRadius();
+
+		SendMoveRootPawns();
+		enemyAIController->MoveEnemy();
 	}
 
 	GetWorldTimerManager().SetTimer(EnemyStateUpdateTimer_, this, &AEnemyCharacter::AlertCalculation, 0.25f, true);
+}
+void AEnemyCharacter::EndPlay(const EEndPlayReason::Type EndPlayReason)
+{
+	if (AEnemyAIController* enemyAIController = Cast<AEnemyAIController>(GetController()))
+	{
+		GetWorldTimerManager().ClearTimer(EnemyStateUpdateTimer_);
+		GetWorldTimerManager().ClearTimer(EnemyAttackIntervalTimer_);
+		enemyAIController->ClearControllerTimer();
+	}
+
+	Super::EndPlay(EndPlayReason);
 }
 float AEnemyCharacter::TakeDamage(float DamageAmount, struct FDamageEvent const& DamageEvent, AController* EventInstigator, AActor* DamageCauser)
 {
