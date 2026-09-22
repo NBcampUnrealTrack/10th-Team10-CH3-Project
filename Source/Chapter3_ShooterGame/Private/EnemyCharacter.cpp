@@ -3,6 +3,7 @@
 #include "DistractionCoin.h"
 #include "MainGameState.h"
 #include "Kismet/GameplayStatics.h"
+#include "Components/CapsuleComponent.h"
 #include "GameFramework/CharacterMovementComponent.h"
 
 AEnemyCharacter::AEnemyCharacter()
@@ -117,8 +118,27 @@ void AEnemyCharacter::DestroyEnemy(void)
 		GetWorldTimerManager().ClearTimer(EnemyAttackIntervalTimer_);
 		enemyAIController->ClearControllerTimer();
 
-		Destroy();
+		if (currentHealth_ > 0)
+		{
+			Destroy();
+			return;
+		}
 	}
+
+	FTimerHandle deleyDestroyTimer;
+	USkeletalMeshComponent* meshComponent = GetMesh();
+	UCharacterMovementComponent* movementComponent = GetCharacterMovement();
+
+	GetCapsuleComponent()->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+
+	movementComponent->StopMovementImmediately();
+	movementComponent->DisableMovement();
+
+	meshComponent->SetCollisionObjectType(ECC_WorldStatic);
+	meshComponent->SetSimulatePhysics(true);
+	meshComponent->WakeAllRigidBodies();
+
+	GetWorldTimerManager().SetTimer(deleyDestroyTimer, [this](){Destroy();}, 5.0f, false);
 }
 
 void AEnemyCharacter::BeginPlay()
@@ -178,13 +198,15 @@ float AEnemyCharacter::TakeDamage(float DamageAmount, struct FDamageEvent const&
 	return ActualDamage;
 }
 
-void AEnemyCharacter::StartFire(void) {
+void AEnemyCharacter::StartFire(void)
+{
 	if (AEnemyAIController* enemyAIController = Cast<AEnemyAIController>(GetController()))
 	{
 		enemyAIController->Fire();
 	}
 }
-void AEnemyCharacter::OnDeath(void) {
+void AEnemyCharacter::OnDeath(void)
+{
 	//적 AI 사망 정보 GameState에 전송해야 함!
 	if (AMainGameState* mainGameState = GetWorld()->GetGameState<AMainGameState>())
 	{
