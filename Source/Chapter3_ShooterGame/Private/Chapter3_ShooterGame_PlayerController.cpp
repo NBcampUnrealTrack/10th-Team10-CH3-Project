@@ -8,6 +8,8 @@
 #include "SlowMotionSkillComponent.h"
 #include "AssassinationTargetComponent.h"
 #include "UnlockInventoryComponent.h"
+#include "WeaponCustomizationWidget.h"
+#include "Blueprint/UserWidget.h"
 #include "EngineUtils.h"
 #include "Camera/PlayerCameraManager.h"
 #include "Components/PrimitiveComponent.h"
@@ -494,6 +496,45 @@ void AChapter3_ShooterGame_PlayerController::ThrowCoin()
     {
         coinThrowSkill_->TryThrowCoin();
     }
+}
+
+bool AChapter3_ShooterGame_PlayerController::IsWeaponCustomizationOpen() const
+{
+    return IsValid(weaponCustomizationWidget_) && weaponCustomizationWidget_->IsInViewport();
+}
+
+void AChapter3_ShooterGame_PlayerController::ToggleWeaponCustomization()
+{
+    if (IsWeaponCustomizationOpen())
+    {
+        weaponCustomizationWidget_->RemoveFromParent();
+        SetInputMode(FInputModeGameOnly());
+        SetShowMouseCursor(false);
+        return;
+    }
+
+    if (!WeaponCustomizationWidgetClass)
+    {
+        UE_LOG(LogShooting, Warning, TEXT("WeaponCustomizationWidgetClass가 설정되지 않았습니다."));
+        return;
+    }
+
+    if (!IsValid(weaponCustomizationWidget_))
+    {
+        weaponCustomizationWidget_ = CreateWidget<UWeaponCustomizationWidget>(this, WeaponCustomizationWidgetClass);
+    }
+    if (!IsValid(weaponCustomizationWidget_))
+    {
+        return;
+    }
+
+    weaponCustomizationWidget_->AddToViewport();
+
+    FInputModeGameAndUI inputMode;
+    inputMode.SetWidgetToFocus(weaponCustomizationWidget_->TakeWidget());
+    inputMode.SetLockMouseToViewportBehavior(EMouseLockMode::DoNotLock);
+    SetInputMode(inputMode);
+    SetShowMouseCursor(true);
 }
 
 void AChapter3_ShooterGame_PlayerController::ForwardCoinThrown(ADistractionCoin* coin)
