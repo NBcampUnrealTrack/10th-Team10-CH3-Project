@@ -1,5 +1,8 @@
 #include "UnlockInventoryComponent.h"
 
+#include "Chapter3GameInstance.h"
+#include "Kismet/GameplayStatics.h"
+
 DEFINE_LOG_CATEGORY_STATIC(LogUnlockInventory, Log, All);
 
 UUnlockInventoryComponent::UUnlockInventoryComponent()
@@ -15,25 +18,33 @@ void UUnlockInventoryComponent::BeginPlay()
 
 void UUnlockInventoryComponent::EnsureInitialized()
 {
-    if (isInitialized_)
+    if (!isInitialized_)
     {
-        return;
+        isInitialized_ = true;
+        slots_.Reserve(itemDefinitions_.Num());
+        for (const FUnlockInventoryItem& item : itemDefinitions_)
+        {
+            if (item.itemId_.IsNone() || FindSlotIndex(item.itemId_) != INDEX_NONE)
+            {
+                UE_LOG(LogUnlockInventory, Warning, TEXT("%s: Item Definitions contains an empty or duplicate Item ID '%s'; entry skipped."),
+                    *GetNameSafe(GetOwner()), *item.itemId_.ToString());
+                continue;
+            }
+
+            FUnlockInventorySlot slot = {};
+            slot.item_ = item;
+            slots_.Add(slot);
+        }
     }
 
-    isInitialized_ = true;
-    slots_.Reserve(itemDefinitions_.Num());
-    for (const FUnlockInventoryItem& item : itemDefinitions_)
+    // 저장 복원은 신규 획득 이벤트를 발생시키지 않는다. 초기화가 먼저 호출된 경우도 재동기화한다.
+    const UChapter3GameInstance* progress = Cast<UChapter3GameInstance>(UGameplayStatics::GetGameInstance(this));
+    if (IsValid(progress) && progress->IsProgressReady())
     {
-        if (item.itemId_.IsNone() || FindSlotIndex(item.itemId_) != INDEX_NONE)
+        for (FUnlockInventorySlot& slot : slots_)
         {
-            UE_LOG(LogUnlockInventory, Warning, TEXT("%s: Item Definitions contains an empty or duplicate Item ID '%s'; entry skipped."),
-                *GetNameSafe(GetOwner()), *item.itemId_.ToString());
-            continue;
+            slot.isUnlocked_ = progress->HasCollectedItem(slot.item_.itemId_);
         }
-
-        FUnlockInventorySlot slot = {};
-        slot.item_ = item;
-        slots_.Add(slot);
     }
 }
 
@@ -54,9 +65,20 @@ EUnlockInventoryResult UUnlockInventoryComponent::UnlockItem(FName itemId)
         return EUnlockInventoryResult::InvalidItem;
     }
 
+    UChapter3GameInstance* progress = Cast<UChapter3GameInstance>(UGameplayStatics::GetGameInstance(this));
+    if (!IsValid(progress) || !progress->IsProgressReady())
+    {
+        return EUnlockInventoryResult::ProgressUnavailable;
+    }
+
     if (slots_[slotIndex].isUnlocked_)
     {
         return EUnlockInventoryResult::AlreadyUnlocked;
+    }
+
+    if (!progress->CollectItem(itemId))
+    {
+        return EUnlockInventoryResult::ProgressUnavailable;
     }
 
     slots_[slotIndex].isUnlocked_ = true;

@@ -1,5 +1,6 @@
 ﻿#include "Chapter3_ShooterGame_GameMode.h"
 #include "Kismet/GameplayStatics.h"
+#include "Chapter3GameInstance.h"
 #include "EngineUtils.h"
 #include "EnemyAIController.h"
 #include "Chapter3_ShooterGame_Character.h"
@@ -9,7 +10,7 @@ AChapter3_ShooterGame_GameMode::AChapter3_ShooterGame_GameMode() {
 }
 
 void AChapter3_ShooterGame_GameMode::BeginPlay() {
-    Super::BeginPlay();
+    mission_run_id_ = FGuid::NewGuid();
     is_game_over_ = false;
     is_game_cleared_ = false;
     current_score_ = 0;
@@ -23,6 +24,8 @@ void AChapter3_ShooterGame_GameMode::BeginPlay() {
         is_boss_map_timer_active_ = true;
         boss_map_remaining_time_ = kBossMapTimeLimit;
     }
+    // Blueprint BeginPlay can call mission APIs, so initialize the run first.
+    Super::BeginPlay();
 }
 
 void AChapter3_ShooterGame_GameMode::Tick(float delta_seconds) {
@@ -110,7 +113,9 @@ void AChapter3_ShooterGame_GameMode::ReportPlayerDetected()
 // --- 점수 로직 ---
 void AChapter3_ShooterGame_GameMode::AddScore(int32 amount) {
     if (is_game_over_ || is_game_cleared_) return;
-    current_score_ += amount;
+    const int64 nextScore = static_cast<int64>(current_score_) + amount;
+    if (nextScore > MAX_int32 || nextScore < MIN_int32) return;
+    current_score_ = static_cast<int32>(nextScore);
     on_score_changed_.Broadcast(current_score_);
 }
 
@@ -158,7 +163,7 @@ void AChapter3_ShooterGame_GameMode::TriggerGameStart() {
 
 void AChapter3_ShooterGame_GameMode::TriggerGameEnd() {
     UE_LOG(LogTemp, Log, TEXT("[GameMode] 게임 종료 트리거 실행 (최종 엔딩)"));
-    is_game_cleared_ = true;
+    ProcessGameVictory(TEXT("최종 엔딩 완료"));
 }
 
 // --- 결과 처리 ---
@@ -172,10 +177,25 @@ void AChapter3_ShooterGame_GameMode::ProcessGameOver(const FString& fail_reason)
 }
 
 void AChapter3_ShooterGame_GameMode::ProcessGameVictory(const FString& victory_reason) {
+    if (is_game_over_ || is_game_cleared_) return;
+
     is_game_cleared_ = true;
     is_detection_timer_active_ = false;
     is_boss_map_timer_active_ = false;
     UE_LOG(LogTemp, Log, TEXT("VICTORY: %s"), *victory_reason);
+
+    const FName level_id = progress_level_id_.IsNone()
+        ? FName(*UGameplayStatics::GetCurrentLevelName(this, true))
+        : progress_level_id_;
+    if (UChapter3GameInstance* game_instance = Cast<UChapter3GameInstance>(GetGameInstance())) {
+        const int64 reward_amount = FMath::Max<int64>(0, mission_reward_amount_);
+        if (!game_instance->CompleteMission(level_id, mission_run_id_, reward_amount, first_clear_reward_only_)) {
+            UE_LOG(LogTemp, Warning, TEXT("[GameMode] Mission progress was not accepted: %s"), *level_id.ToString());
+        }
+    }
+    else {
+        UE_LOG(LogTemp, Error, TEXT("[GameMode] Chapter3GameInstance is not configured; mission progress cannot be saved."));
+    }
 
     on_game_victory_.Broadcast(victory_reason);
 }

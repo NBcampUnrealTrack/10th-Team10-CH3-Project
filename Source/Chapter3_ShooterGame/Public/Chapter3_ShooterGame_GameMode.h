@@ -78,6 +78,16 @@ public:
     UFUNCTION(BlueprintCallable, Category = "Mission|Control")
     void TriggerGameEnd();
 
+    // None이면 PIE 접두어를 제거한 현재 맵 이름을 저장 ID로 사용합니다.
+    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Mission|Progress")
+    FName progress_level_id_;
+
+    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Mission|Progress", meta = (ClampMin = "0", UIMin = "0"))
+    int64 mission_reward_amount_ = 0;
+
+    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Mission|Progress")
+    bool first_clear_reward_only_ = false;
+
 private:
     void ProcessGameOver(const FString& fail_reason);
     void ProcessGameVictory(const FString& victory_reason);
@@ -85,6 +95,9 @@ private:
     // --- 상태 확인용 검사 함수 ---
     void CheckPlayerDetectionFromAI();
     void CheckPlayerDeath();
+
+    // 맵 실행마다 새 ID를 부여하여 같은 임무 완료의 중복 지급을 막습니다.
+    FGuid mission_run_id_;
 
     // --- 상태 변수 ---
     UPROPERTY(VisibleAnywhere, Category = "Mission")
