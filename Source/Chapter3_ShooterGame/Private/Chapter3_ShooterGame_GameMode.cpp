@@ -18,9 +18,8 @@ void AChapter3_ShooterGame_GameMode::BeginPlay() {
 
     is_game_over_ = false;
     is_game_cleared_ = false;
-    current_score_ = kBaseScore;
+    total_farming_reward_ = 0;
     is_target_eliminated_ = false;
-    is_escaped_ = false;
 
     FString current_level_name = UGameplayStatics::GetCurrentLevelName(this);
     if (current_level_name.Contains(TEXT("Boss"))) {
@@ -61,19 +60,19 @@ void AChapter3_ShooterGame_GameMode::Tick(float delta_seconds) {
     }
 }
 
-// --- 1. 처치 허용 수 및 점수 차감 연산 ---
+// --- 패널티 연산 ---
 
 int32 AChapter3_ShooterGame_GameMode::GetAllowedKillsForCurrentStage() const {
     FString current_level_name = UGameplayStatics::GetCurrentLevelName(this);
 
     if (current_level_name.Contains(TEXT("Level2")) || current_level_name.Contains(TEXT("Stage2"))) {
-        return 4; // Stage 2: 4명 허용
+        return 4;
     }
     else if (current_level_name.Contains(TEXT("Level3")) || current_level_name.Contains(TEXT("Stage3")) || current_level_name.Contains(TEXT("Boss"))) {
-        return 5; // Stage 3 / Boss: 5명 허용
+        return 5;
     }
 
-    return 2; // Stage 1: 2명 허용
+    return 2;
 }
 
 int32 AChapter3_ShooterGame_GameMode::GetCurrentPlayerKillCount() const {
@@ -91,27 +90,30 @@ int32 AChapter3_ShooterGame_GameMode::GetExcessKillCount() const {
     return FMath::Max(0, current_kills - allowed_kills);
 }
 
+// 초과 처치 발생 시 마리 수에 관계없이 고정 500점 패널티 부여
 int32 AChapter3_ShooterGame_GameMode::GetKillPenaltyAmount() const {
-    return GetExcessKillCount() * kKillPenaltyAmount;
+    if (GetExcessKillCount() > 0) {
+        return kFixedKillPenalty; // 500점
+    }
+    return 0;
 }
+
+// --- 추가 보상 (파밍) 시스템 ---
+
+void AChapter3_ShooterGame_GameMode::AddFarmingReward(int32 score_amount) {
+    if (is_game_over_ || is_game_cleared_ || score_amount <= 0) return;
+
+    total_farming_reward_ += score_amount;
+    on_score_changed_.Broadcast(CalculateFinalScore());
+}
+
+// --- 최종 점수 연산 및 저장 ---
 
 int32 AChapter3_ShooterGame_GameMode::CalculateFinalScore() const {
-    int32 final_score = current_score_ - GetKillPenaltyAmount();
+    // 최종 점수 = 3000 (기본) + 파밍 추가 보상 - 패널티(500)
+    int32 final_score = kBaseScore + total_farming_reward_ - GetKillPenaltyAmount();
     return FMath::Max(0, final_score);
 }
-
-// --- 2. 클리어 보상 재화 세부 연산 ---
-
-int32 AChapter3_ShooterGame_GameMode::GetScoreRewardCurrency() const {
-    int32 final_score = CalculateFinalScore();
-    return FMath::FloorToInt(final_score * kScoreToCurrencyRatio); // 최종 점수 * 0.5
-}
-
-int32 AChapter3_ShooterGame_GameMode::CalculateRewardCurrency() const {
-    return kBaseRewardCurrency + GetScoreRewardCurrency(); // 기본 3000 + (점수 * 0.5)
-}
-
-// --- 3. 기존 Chapter3GameInstance 연동 누적 재화 제어 ---
 
 int64 AChapter3_ShooterGame_GameMode::GetTotalCurrency() const {
     if (const UChapter3GameInstance* GI = Cast<UChapter3GameInstance>(GetGameInstance())) {
@@ -127,7 +129,7 @@ bool AChapter3_ShooterGame_GameMode::AddCurrency(int64 amount) {
     return false;
 }
 
-// --- 4. 팀원 수집품 완벽 보유 판별 ---
+// --- 기타 유틸리티 및 암살 목표 연동 ---
 
 bool AChapter3_ShooterGame_GameMode::IsAllCollectiblesAcquired() const {
     APlayerController* PC = UGameplayStatics::GetPlayerController(GetWorld(), 0);
@@ -145,25 +147,11 @@ bool AChapter3_ShooterGame_GameMode::IsAllCollectiblesAcquired() const {
     return true;
 }
 
-// --- 5. 실제 암살/구출 목표 연동 ---
-
 void AChapter3_ShooterGame_GameMode::OnTargetEliminated() {
     if (is_game_over_ || is_game_cleared_) return;
-
     is_target_eliminated_ = true;
-    ProcessGameVictory(TEXT("주요 암살 대상 처치 성공!"));
+    ProcessGameVictory(TEXT("주요 암살 대상 처치 성공: 미션 클리어!"));
 }
-
-void AChapter3_ShooterGame_GameMode::OnHeroineRescued() {
-    if (is_game_over_ || is_game_cleared_) return;
-
-    FString current_level_name = UGameplayStatics::GetCurrentLevelName(this);
-    if (current_level_name.Contains(TEXT("Boss"))) {
-        ProcessGameVictory(TEXT("히로인 구출 성공!"));
-    }
-}
-
-// --- 타이머, 스코어, 이동 관련 구현 ---
 
 void AChapter3_ShooterGame_GameMode::ResetStageTimer() { stage_play_time_ = 0.0f; }
 
@@ -219,14 +207,6 @@ void AChapter3_ShooterGame_GameMode::CheckPlayerDeath() {
     }
 }
 
-void AChapter3_ShooterGame_GameMode::AddScore(int32 amount) {
-    if (is_game_over_ || is_game_cleared_) return;
-    current_score_ += amount;
-    on_score_changed_.Broadcast(current_score_);
-}
-
-int32 AChapter3_ShooterGame_GameMode::GetCurrentScore() const { return current_score_; }
-
 void AChapter3_ShooterGame_GameMode::ProcessGameOver(const FString& fail_reason) {
     is_game_over_ = true;
     is_detection_timer_active_ = false;
@@ -239,9 +219,9 @@ void AChapter3_ShooterGame_GameMode::ProcessGameVictory(const FString& victory_r
     is_detection_timer_active_ = false;
     is_boss_map_timer_active_ = false;
 
-    // 클리어 보상 계산 및 게임 인스턴스 저장소 반영
-    int32 round_reward = CalculateRewardCurrency();
-    AddCurrency(round_reward);
+    // 최종 점수를 획득 재화(Money)에 추가
+    int32 final_reward = CalculateFinalScore();
+    AddCurrency(final_reward);
 
     on_game_victory_.Broadcast(victory_reason);
 }

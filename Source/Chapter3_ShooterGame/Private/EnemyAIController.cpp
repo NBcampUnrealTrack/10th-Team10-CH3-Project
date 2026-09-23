@@ -53,7 +53,8 @@ void AEnemyAIController::OnPerceptionUpdated(AActor* Actor, FAIStimulus Stimulus
 
 		//적 AI가 플레이어를 감지했을 때
 		isCaptured_ = true;
-		SetFocus(playerPawn_, EAIFocusPriority::Gameplay);
+		SetFocus(playerPawn_);
+		//SetFocus(playerPawn_, EAIFocusPriority::Gameplay);
 		GetWorldTimerManager().ClearTimer(enemyBehaviorTimer_);
 		MoveToPlayerLocation();
 	}
@@ -168,6 +169,7 @@ void AEnemyAIController::StopEnemy(void)
 
 void AEnemyAIController::PauseEnemyBehaviorTimer(float pauseTime)
 {
+	arriveGoal_ = true;
 	GetWorldTimerManager().ClearTimer(enemyBehaviorTimer_);
 
 	if (moveRandom_)

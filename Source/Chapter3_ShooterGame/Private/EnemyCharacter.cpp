@@ -258,6 +258,7 @@ void AEnemyCharacter::OnOverlapBegin(UPrimitiveComponent* OverlappedComp, AActor
 }
 void AEnemyCharacter::AcceptedLocation(FVector landingLocation)
 {
+	GEngine->AddOnScreenDebugMessage(-1, 1.0f, FColor::Green, FString::Printf(TEXT("Captured Coin!")));
 	FVector Direction = landingLocation - GetActorLocation();
 
 	FRotator LookAtRotation = Direction.Rotation();
@@ -276,8 +277,10 @@ void AEnemyCharacter::AcceptedLocation(FVector landingLocation)
 			enemyAIController->ClearFocus(EAIFocusPriority::Gameplay);
 		}
 
-		SetActorRotation(LookAtRotation);
 		enemyAIController->PauseEnemyBehaviorTimer(FMath::FRandRange(5.0f, 10.0f));
+		enemyAIController->StopEnemy();
+
+		SetActorRotation(LookAtRotation);
 	}
 }
 
