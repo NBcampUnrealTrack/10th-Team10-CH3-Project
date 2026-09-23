@@ -23,39 +23,33 @@ public:
     UFUNCTION(BlueprintPure, Category = "Ending")
     bool IsAllCollectiblesAcquired() const;
 
-    // --- 스테이지별 적 처치 허용 수 및 점수 차감 연산 ---
-    UFUNCTION(BlueprintPure, Category = "Score|UI")
+    // --- 스테이지별 적 처치 허용 수 및 패널티 연산 ---
+    UFUNCTION(BlueprintPure, Category = "Score|Penalty")
     int32 GetAllowedKillsForCurrentStage() const;
 
-    UFUNCTION(BlueprintPure, Category = "Score|UI")
+    UFUNCTION(BlueprintPure, Category = "Score|Penalty")
     int32 GetCurrentPlayerKillCount() const;
 
-    // 허용 수 초과 처치 수
+    UFUNCTION(BlueprintPure, Category = "Score|Penalty")
+    int32 GetExcessKillCount() const;
+
+    UFUNCTION(BlueprintPure, Category = "Score|Penalty")
+    int32 GetKillPenaltyAmount() const; // 허용 수 초과 시 고정 500점 차감
+
+    // --- 추가 보상 (파밍) 시스템 ---
+    UFUNCTION(BlueprintCallable, Category = "Score|Farming")
+    void AddFarmingReward(int32 score_amount);
+
+    UFUNCTION(BlueprintPure, Category = "Score|Farming")
+    int32 GetTotalFarmingReward() const { return total_farming_reward_; }
+
+    // --- 최종 점수 및 재화 연산 ---
     UFUNCTION(BlueprintPure, Category = "Score|UI")
-    int32 GetExcessKillCount() const; 
-
-    // 초과 처치로 인해 차감되는 총 패널티 점수 (초과분 * 350)
-    UFUNCTION(BlueprintPure, Category = "Score|UI")
-    int32 GetKillPenaltyAmount() const; 
-
-    // 최종 연산 결과 점수 (5000 - 패널티)
+    int32 GetBaseScore() const { return kBaseScore; } // 기본 점수 (3000)
 
     UFUNCTION(BlueprintPure, Category = "Score|UI")
-    int32 CalculateFinalScore() const;
+    int32 CalculateFinalScore() const; // 최종 점수 = 3000 + 파밍 추가 보상 - 패널티(500)
 
-    // --- 클리어 보상 재화 세부 연산 (결과 창 UI 노출용) ---
-    UFUNCTION(BlueprintPure, Category = "Reward|UI")
-    int32 GetBaseRewardCurrency() const { return kBaseRewardCurrency; } // 기본 보상 (3000)
-
-    // 점수 변환 보상 (최종 점수 * 0.5)
-    UFUNCTION(BlueprintPure, Category = "Reward|UI")
-    int32 GetScoreRewardCurrency() const; 
-
-    // 총 클리어 보상 재화 (기본 3000 + 점수 변환 보상)
-    UFUNCTION(BlueprintPure, Category = "Reward|UI")
-    int32 CalculateRewardCurrency() const; 
-
-    // --- 기존 Chapter3GameInstance 연동 누적 재화 제어 ---
     UFUNCTION(BlueprintPure, Category = "Currency")
     int64 GetTotalCurrency() const;
 
@@ -103,19 +97,9 @@ public:
     UFUNCTION(BlueprintPure, Category = "UI|Status")
     bool WasDetected() const { return was_detected_; }
 
-    // --- 점수 제어 ---
-    UFUNCTION(BlueprintCallable, Category = "Score")
-    void AddScore(int32 amount);
-
-    UFUNCTION(BlueprintPure, Category = "UI|Score")
-    int32 GetCurrentScore() const;
-
-    // --- 실제 암살/구출 목표 연동 ---
+    // --- 실제 암살 목표 연동 ---
     UFUNCTION(BlueprintCallable, Category = "Mission")
     void OnTargetEliminated();
-
-    UFUNCTION(BlueprintCallable, Category = "Mission")
-    void OnHeroineRescued();
 
     UFUNCTION(BlueprintCallable, Category = "Mission")
     void ReportPlayerDetected();
@@ -137,11 +121,9 @@ private:
     void CheckPlayerDetectionFromAI();
     void CheckPlayerDeath();
 
-    // 상숫값 설정
-    constexpr static int32 kBaseScore = 5000;              // 기본 점수
-    constexpr static int32 kKillPenaltyAmount = 350;       // 초과 처치당 패널티 점수
-    constexpr static int32 kBaseRewardCurrency = 3000;     // 기본 클리어 재화
-    constexpr static float kScoreToCurrencyRatio = 0.5f;   // 점수 -> 재화 환산 비율 (0.5)
+    // 수치 설정
+    constexpr static int32 kBaseScore = 3000;         // 기본 점수 3000
+    constexpr static int32 kFixedKillPenalty = 500;   // 허용 수 초과 시 1회 고정 패널티 (-500)
 
     constexpr static float kDetectionTimeLimit = 180.0f;
     constexpr static float kBossMapTimeLimit = 300.0f;
@@ -153,13 +135,10 @@ private:
     bool is_game_cleared_ = false;
 
     UPROPERTY(VisibleAnywhere, Category = "Score")
-    int32 current_score_ = 0;
+    int32 total_farming_reward_ = 0;
 
     UPROPERTY(VisibleAnywhere, Category = "Mission")
     bool is_target_eliminated_ = false;
-
-    UPROPERTY(VisibleAnywhere, Category = "Mission")
-    bool is_escaped_ = false;
 
     UPROPERTY(VisibleAnywhere, Category = "Mission")
     bool was_detected_ = false;
