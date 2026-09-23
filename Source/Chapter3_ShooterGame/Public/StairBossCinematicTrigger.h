@@ -1,6 +1,8 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "Animation/AnimInstance.h"
+#include "Animation/PoseSnapshot.h"
 #include "GameFramework/Actor.h"
 #include "MovieSceneSequencePlaybackSettings.h"
 #include "TimerManager.h"
@@ -15,6 +17,24 @@ class ULevelSequence;
 class ULevelSequencePlayer;
 class UPrimitiveComponent;
 class UUserWidget;
+
+UCLASS(Transient, NotBlueprintable)
+class CHAPTER3_SHOOTERGAME_API UStairBossFinalPoseAnimInstance : public UAnimInstance
+{
+    GENERATED_BODY()
+
+public:
+    bool SetFinalPose(const FPoseSnapshot& pose);
+    const FPoseSnapshot& GetFinalPose() const { return finalPose_; }
+
+protected:
+    virtual FAnimInstanceProxy* CreateAnimInstanceProxy() override;
+    virtual void DestroyAnimInstanceProxy(FAnimInstanceProxy* proxy) override;
+
+private:
+    UPROPERTY(Transient)
+    FPoseSnapshot finalPose_ = {};
+};
 
 DECLARE_DYNAMIC_MULTICAST_DELEGATE(FOnStairBossCinematicEvent);
 
@@ -73,6 +93,15 @@ public:
 
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Cinematic|Playback")
     bool holdBlackAtEnd_ = true;
+
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Cinematic|Playback")
+    bool preserveSequenceStateOnFinish_ = false;
+
+    UPROPERTY(EditInstanceOnly, BlueprintReadWrite, Category = "Cinematic|Playback")
+    TArray<TObjectPtr<AActor>> finalPoseActors_ = {};
+
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Cinematic|Playback", meta = (ClampMin = "0.0", Units = "s"))
+    float returnFadeInDuration_ = 0.0f;
 
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Cinematic|Playback")
     bool protectPlayer_ = true;

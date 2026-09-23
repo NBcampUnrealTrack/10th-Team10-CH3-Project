@@ -1,5 +1,7 @@
 #include "StairBossCinematicTrigger.h"
 
+#include "Animation/AnimInstanceProxy.h"
+#include "Animation/AnimNodeBase.h"
 #include "Camera/PlayerCameraManager.h"
 #include "Blueprint/UserWidget.h"
 #include "Blueprint/WidgetBlueprintLibrary.h"
@@ -7,6 +9,8 @@
 #include "CollisionShape.h"
 #include "Components/BoxComponent.h"
 #include "Components/CapsuleComponent.h"
+#include "Components/SkeletalMeshComponent.h"
+#include "Engine/SkeletalMesh.h"
 #include "Engine/World.h"
 #include "GameFramework/Character.h"
 #include "GameFramework/CharacterMovementComponent.h"
@@ -20,6 +24,86 @@
 #include "SlowMotionSkillComponent.h"
 
 DEFINE_LOG_CATEGORY_STATIC(LogStairBossCinematic, Log, All);
+
+struct FStairBossFinalPoseAnimProxy : public FAnimInstanceProxy
+{
+    explicit FStairBossFinalPoseAnimProxy(UAnimInstance* animInstance)
+        : FAnimInstanceProxy(animInstance)
+    {
+    }
+
+    void SetFinalPose(const FPoseSnapshot& pose)
+    {
+        finalPose_ = pose;
+    }
+
+protected:
+    virtual void Initialize(UAnimInstance* animInstance) override
+    {
+        FAnimInstanceProxy::Initialize(animInstance);
+        if (const UStairBossFinalPoseAnimInstance* instance = Cast<UStairBossFinalPoseAnimInstance>(animInstance))
+        {
+            finalPose_ = instance->GetFinalPose();
+        }
+    }
+
+    virtual bool Evaluate(FPoseContext& output) override
+    {
+        output.ResetToRefPose();
+        if (finalPose_.bIsValid)
+        {
+            const FBoneContainer& bones = output.Pose.GetBoneContainer();
+            for (const FCompactPoseBoneIndex boneIndex : output.Pose.ForEachBoneIndex())
+            {
+                const int32 meshIndex = bones.MakeMeshPoseIndex(boneIndex).GetInt();
+                if (finalPose_.LocalTransforms.IsValidIndex(meshIndex))
+                {
+                    output.Pose[boneIndex] = finalPose_.LocalTransforms[meshIndex];
+                }
+            }
+        }
+        return true;
+    }
+
+private:
+    FPoseSnapshot finalPose_ = {};
+};
+
+bool UStairBossFinalPoseAnimInstance::SetFinalPose(const FPoseSnapshot& pose)
+{
+    const USkeletalMeshComponent* mesh = GetSkelMeshComponent();
+    const USkeletalMesh* asset = IsValid(mesh) ? mesh->GetSkeletalMeshAsset() : nullptr;
+    if (!IsValid(asset) || !pose.bIsValid || pose.SkeletalMeshName != asset->GetFName())
+    {
+        return false;
+    }
+    const FReferenceSkeleton& skeleton = asset->GetRefSkeleton();
+    if (pose.LocalTransforms.Num() != skeleton.GetNum() || pose.BoneNames.Num() != skeleton.GetNum())
+    {
+        return false;
+    }
+    for (int32 boneIndex = 0; boneIndex < skeleton.GetNum(); ++boneIndex)
+    {
+        if (pose.BoneNames[boneIndex] != skeleton.GetBoneName(boneIndex)
+            || pose.LocalTransforms[boneIndex].ContainsNaN())
+        {
+            return false;
+        }
+    }
+    finalPose_ = pose;
+    GetProxyOnGameThread<FStairBossFinalPoseAnimProxy>().SetFinalPose(finalPose_);
+    return true;
+}
+
+FAnimInstanceProxy* UStairBossFinalPoseAnimInstance::CreateAnimInstanceProxy()
+{
+    return new FStairBossFinalPoseAnimProxy(this);
+}
+
+void UStairBossFinalPoseAnimInstance::DestroyAnimInstanceProxy(FAnimInstanceProxy* proxy)
+{
+    delete static_cast<FStairBossFinalPoseAnimProxy*>(proxy);
+}
 
 AStairBossCinematicTrigger::AStairBossCinematicTrigger()
 {
@@ -224,6 +308,11 @@ bool AStairBossCinematicTrigger::StartCinematic()
         ReportConfigurationError(TEXT("Fade Out Duration must be a finite nonnegative value."));
         return false;
     }
+    if (!FMath::IsFinite(returnFadeInDuration_) || returnFadeInDuration_ < 0.0f)
+    {
+        ReportConfigurationError(TEXT("Return Fade In Duration must be a finite nonnegative value."));
+        return false;
+    }
     if (controller->bCinematicMode)
     {
         return false;
@@ -395,7 +484,14 @@ void AStairBossCinematicTrigger::HandleSequenceFinished()
     }
     else
     {
+        APlayerController* controller = playerController_.Get();
         ReleaseCinematic();
+        if (returnFadeInDuration_ > 0.0f && IsValid(controller)
+            && IsValid(controller->PlayerCameraManager))
+        {
+            controller->PlayerCameraManager->StartCameraFade(
+                1.0f, 0.0f, returnFadeInDuration_, FLinearColor::Black, false, false);
+        }
     }
     UE_LOG(LogStairBossCinematic, Log, TEXT("%s: cinematic finished; hold black=%s."),
         *GetName(), holdBlackAtEnd_ ? TEXT("true") : TEXT("false"));
@@ -419,8 +515,80 @@ void AStairBossCinematicTrigger::ClearSequencePlayer()
         sequencePlayer_->OnStop.RemoveDynamic(this, &AStairBossCinematicTrigger::HandleSequenceStopped);
         if (sequencePlaybackStarted_ && sequencePlayer_->IsValid())
         {
+            const bool preserveFinishedState = preserveSequenceStateOnFinish_ && hasFinished_;
+            struct FFinalPose
+            {
+                TWeakObjectPtr<USkeletalMeshComponent> mesh = nullptr;
+                FPoseSnapshot pose = {};
+                FTransform transform = FTransform::Identity;
+            };
+            TArray<FFinalPose> finalPoses = {};
+            if (preserveFinishedState)
+            {
+                for (AActor* actor : finalPoseActors_)
+                {
+                    if (!IsValid(actor) || actor->GetWorld() != GetWorld() || actor == playerPawn_.Get())
+                    {
+                        continue;
+                    }
+                    TArray<USkeletalMeshComponent*> meshes = {};
+                    actor->GetComponents<USkeletalMeshComponent>(meshes);
+                    for (USkeletalMeshComponent* mesh : meshes)
+                    {
+                        if (!IsValid(mesh) || !IsValid(mesh->GetSkeletalMeshAsset()))
+                        {
+                            continue;
+                        }
+                        mesh->HandleExistingParallelEvaluationTask(true, true);
+                        if (mesh->GetNumComponentSpaceTransforms() != mesh->GetNumBones()
+                            || mesh->GetNumBones() == 0)
+                        {
+                            UE_LOG(LogStairBossCinematic, Warning, TEXT("%s: cannot capture final pose for %s; bone transforms are incomplete."), *GetName(), *mesh->GetName());
+                            continue;
+                        }
+                        FFinalPose finalPose = {};
+                        finalPose.mesh = mesh;
+                        finalPose.transform = mesh->GetComponentTransform();
+                        mesh->SnapshotPose(finalPose.pose);
+                        if (finalPose.pose.bIsValid)
+                        {
+                            finalPoses.Add(MoveTemp(finalPose));
+                        }
+                    }
+                }
+                sequencePlayer_->SetCompletionModeOverride(EMovieSceneCompletionModeOverride::None);
+            }
             sequencePlayer_->Stop();
-            sequencePlayer_->RestoreState();
+            if (preserveFinishedState)
+            {
+                sequencePlayer_->DiscardPreAnimatedState();
+            }
+            else
+            {
+                sequencePlayer_->RestoreState();
+            }
+            for (const FFinalPose& finalPose : finalPoses)
+            {
+                USkeletalMeshComponent* mesh = finalPose.mesh.Get();
+                if (!IsValid(mesh) || !mesh->IsRegistered())
+                {
+                    continue;
+                }
+                mesh->SetWorldTransform(finalPose.transform, false, nullptr, ETeleportType::TeleportPhysics);
+                mesh->SetDisablePostProcessBlueprint(true);
+                mesh->SetAnimInstanceClass(UStairBossFinalPoseAnimInstance::StaticClass());
+                UStairBossFinalPoseAnimInstance* instance = Cast<UStairBossFinalPoseAnimInstance>(mesh->GetAnimInstance());
+                if (!IsValid(instance) || !instance->SetFinalPose(finalPose.pose))
+                {
+                    UE_LOG(LogStairBossCinematic, Warning, TEXT("%s: cannot apply final pose for %s; snapshot does not match its skeleton."), *GetName(), *mesh->GetName());
+                    continue;
+                }
+                mesh->TickAnimation(0.0f, false);
+                mesh->RefreshBoneTransforms();
+                mesh->UpdateBounds();
+                mesh->MarkRenderTransformDirty();
+                mesh->MarkRenderDynamicDataDirty();
+            }
         }
         sequencePlayer_->SetPlaybackSettings(previousPlaybackSettings_);
     }
