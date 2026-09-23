@@ -18,6 +18,7 @@
 #include "Engine/LocalPlayer.h"
 #include "Engine/World.h"
 #include "EnhancedPlayerInput.h"
+#include "GameFramework/CharacterMovementComponent.h"
 #include "GameFramework/DamageType.h"
 #include "GameFramework/Pawn.h"
 #include "InputAction.h"
@@ -108,7 +109,7 @@ void AChapter3_ShooterGame_PlayerController::SetupInputComponent()
 		EnhancedInputComponent->BindAction(SprintAction, ETriggerEvent::Completed, this, &AChapter3_ShooterGame_PlayerController::HandleSprintStop);
 
 		EnhancedInputComponent->BindAction(CrouchAction, ETriggerEvent::Started, this, &AChapter3_ShooterGame_PlayerController::HandleCrouchStart);
-		EnhancedInputComponent->BindAction(CrouchAction, ETriggerEvent::Completed, this, &AChapter3_ShooterGame_PlayerController::HandleCrouchStop);
+		
 
 		EnhancedInputComponent->BindAction(ParkourAction, ETriggerEvent::Started, this, &AChapter3_ShooterGame_PlayerController::HandleParkour);
 		EnhancedInputComponent->BindAction(InteractAction, ETriggerEvent::Started, this, &AChapter3_ShooterGame_PlayerController::HandleInteract);
@@ -190,18 +191,16 @@ void AChapter3_ShooterGame_PlayerController::HandleSprintStop(const FInputAction
 
 void AChapter3_ShooterGame_PlayerController::HandleCrouchStart(const FInputActionValue& Value)
 {
-	if (AChapter3_ShooterGame_Character* Char = GetPawn<AChapter3_ShooterGame_Character>())
-	{
-		Char->SetCrouching(true);
-	}
+    if (AChapter3_ShooterGame_Character* Char = GetPawn<AChapter3_ShooterGame_Character>())
+    {
+        const bool bCurrentlyCrouching = Char->GetCharacterMovement() && Char->GetCharacterMovement()->IsCrouching();
+        Char->SetCrouching(!bCurrentlyCrouching);
+    }
 }
 
 void AChapter3_ShooterGame_PlayerController::HandleCrouchStop(const FInputActionValue& Value)
 {
-	if (AChapter3_ShooterGame_Character* Char = GetPawn<AChapter3_ShooterGame_Character>())
-	{
-		Char->SetCrouching(false);
-	}
+    //사용안함
 }
 
 void AChapter3_ShooterGame_PlayerController::HandleParkour(const FInputActionValue& Value)
