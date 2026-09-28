@@ -2,6 +2,8 @@
 
 #include "KeyCard.h"
 
+#include "Camera/PlayerCameraManager.h"
+#include "TimerManager.h"
 #include "Components/BoxComponent.h"
 #include "Components/InputComponent.h"
 #include "Engine/TargetPoint.h"
@@ -66,6 +68,11 @@ void ATeleportElevator::BeginPlay()
 
 void ATeleportElevator::TryTeleport()
 {
+    if (bIsTeleporting)
+    {
+        return;
+    }
+
     if (!IsValid(LocalController) || !IsValid(InteractionBox))
     {
         return;
@@ -129,35 +136,162 @@ void ATeleportElevator::TryTeleport()
 
         return;
     }
+    APlayerCameraManager* CameraManager =
+        LocalController->PlayerCameraManager;
 
-    const bool bSuccess = Player->TeleportTo(
-        TeleportDestination->GetActorLocation(),
-        Player->GetActorRotation(),
+    if (!IsValid(CameraManager))
+    {
+        return;
+    }
+
+    
+    if (CameraManager->bEnableFading ||
+        LocalController->IsMoveInputIgnored() ||
+        LocalController->IsLookInputIgnored())
+    {
+        return;
+    }
+
+    bIsTeleporting = true;
+
+    LocalController->SetIgnoreMoveInput(true);
+    LocalController->SetIgnoreLookInput(true);
+
+    if (UPawnMovementComponent* Movement =
+        Player->GetMovementComponent())
+    {
+        Movement->StopMovementImmediately();
+    }
+
+    const float Duration = FMath::Max(FadeDuration, 0.01f);
+
+   
+    CameraManager->StartCameraFade(
+        0.0f,
+        1.0f,
+        Duration,
+        FLinearColor::Black,
         false,
-        false);
+        true
+    );
 
-    if (bSuccess)
-    {
-        if (UPawnMovementComponent* Movement =
-            Player->GetMovementComponent())
-        {
-            Movement->StopMovementImmediately();
-        }
+  
+    GetWorldTimerManager().SetTimer(
+        TeleportTimerHandle,
+        this,
+        &ATeleportElevator::ExecuteTeleport,
+        Duration,
+        false
+    );
 
-        UE_LOG(LogTemp, Log, TEXT("Teleport succeeded."));
-    }
-    else
-    {
-        UE_LOG(
-            LogTemp,
-            Warning,
-            TEXT("Teleport failed. Check destination collision."));
-    }
+
 }
 
+void ATeleportElevator::ExecuteTeleport()
+{
+    if (!IsValid(LocalController))
+    {
+        FinishTeleport();
+        return;
+    }
+
+    APawn* Player = LocalController->GetPawn();
+
+    if (IsValid(Player) && IsValid(TeleportDestination))
+    {
+        const FRotator ArrivalRotation(
+            0.0f,
+            TeleportDestination->GetActorRotation().Yaw,
+            0.0f);
+
+        const bool bSuccess = Player->TeleportTo(
+            TeleportDestination->GetActorLocation(),
+            ArrivalRotation,
+            false,
+            false
+        );
+
+        if (bSuccess)
+        {
+            LocalController->SetControlRotation(ArrivalRotation);
+
+            if (UPawnMovementComponent* Movement =
+                Player->GetMovementComponent())
+            {
+                Movement->StopMovementImmediately();
+            }
+
+            UE_LOG(LogTemp, Log, TEXT("Teleport succeeded."));
+        }
+        else
+        {
+            UE_LOG(
+                LogTemp,
+                Warning,
+                TEXT("Teleport failed. Check destination collision.")
+            );
+        }
+    }
+
+    APlayerCameraManager* CameraManager =
+        LocalController->PlayerCameraManager;
+
+    if (!IsValid(CameraManager))
+    {
+        FinishTeleport();
+        return;
+    }
+
+    const float Duration = FMath::Max(FadeDuration, 0.01f);
+
+    CameraManager->StartCameraFade(
+        1.0f,
+        0.0f,
+        Duration,
+        FLinearColor::Black,
+        false,
+        false
+    );
+
+    GetWorldTimerManager().SetTimer(
+        FadeFinishTimerHandle,
+        this,
+        &ATeleportElevator::FinishTeleport,
+        Duration,
+        false
+    );
+}
+void ATeleportElevator::FinishTeleport()
+{
+    if (!bIsTeleporting)
+    {
+        return;
+    }
+
+    if (IsValid(LocalController))
+    {
+        LocalController->SetIgnoreMoveInput(false);
+        LocalController->SetIgnoreLookInput(false);
+    }
+
+    bIsTeleporting = false;
+}
 void ATeleportElevator::EndPlay(
     const EEndPlayReason::Type EndPlayReason)
 {
+    GetWorldTimerManager().ClearTimer(TeleportTimerHandle);
+    GetWorldTimerManager().ClearTimer(FadeFinishTimerHandle);
+
+    if (bIsTeleporting && IsValid(LocalController))
+    {
+        if (IsValid(LocalController->PlayerCameraManager))
+        {
+            LocalController->PlayerCameraManager->StopCameraFade();
+        }
+    }
+
+    FinishTeleport();
+
     if (IsValid(LocalController))
     {
         DisableInput(LocalController);
