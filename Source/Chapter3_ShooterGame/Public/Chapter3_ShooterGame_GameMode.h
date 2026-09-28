@@ -23,7 +23,7 @@ public:
     UFUNCTION(BlueprintPure, Category = "Ending")
     bool IsAllCollectiblesAcquired() const;
 
-    // --- 스테이지별 적 처치 허용 수 및 패널티 연산 ---
+    // --- 맵별 적 처치 허용 수 및 패널티 연산 ---
     UFUNCTION(BlueprintPure, Category = "Score|Penalty")
     int32 GetAllowedKillsForCurrentStage() const;
 
@@ -82,12 +82,6 @@ public:
     UFUNCTION(BlueprintPure, Category = "UI|Timer")
     bool IsDetectionTimerActive() const { return is_detection_timer_active_; }
 
-    UFUNCTION(BlueprintPure, Category = "UI|Timer")
-    float GetBossMapRemainingTime() const { return boss_map_remaining_time_; }
-
-    UFUNCTION(BlueprintPure, Category = "UI|Timer")
-    bool IsBossMapTimerActive() const { return is_boss_map_timer_active_; }
-
     UFUNCTION(BlueprintPure, Category = "UI|Status")
     bool IsGameOver() const { return is_game_over_; }
 
@@ -126,7 +120,6 @@ private:
     constexpr static int32 kFixedKillPenalty = 500;   // 허용 수 초과 시 1회 고정 패널티 (-500)
 
     constexpr static float kDetectionTimeLimit = 180.0f;
-    constexpr static float kBossMapTimeLimit = 300.0f;
 
     UPROPERTY(VisibleAnywhere, Category = "Mission")
     bool is_game_over_ = false;
@@ -148,7 +141,4 @@ private:
 
     float detection_remaining_time_ = 0.0f;
     bool is_detection_timer_active_ = false;
-
-    float boss_map_remaining_time_ = 0.0f;
-    bool is_boss_map_timer_active_ = false;
 };

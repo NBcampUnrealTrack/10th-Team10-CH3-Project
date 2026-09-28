@@ -20,12 +20,6 @@ void AChapter3_ShooterGame_GameMode::BeginPlay() {
     is_game_cleared_ = false;
     total_farming_reward_ = 0; // 새 스테이지 시작 시 추가 파밍 점수 0으로 초기화
     is_target_eliminated_ = false;
-
-    FString current_level_name = UGameplayStatics::GetCurrentLevelName(this);
-    if (current_level_name.Contains(TEXT("Boss"))) {
-        is_boss_map_timer_active_ = true;
-        boss_map_remaining_time_ = kBossMapTimeLimit;
-    }
 }
 
 void AChapter3_ShooterGame_GameMode::Tick(float delta_seconds) {
@@ -49,15 +43,6 @@ void AChapter3_ShooterGame_GameMode::Tick(float delta_seconds) {
             ProcessGameOver(TEXT("[타임아웃] 발각 후 제한 시간 초과로 패배했습니다."));
         }
     }
-
-    if (is_boss_map_timer_active_) {
-        boss_map_remaining_time_ -= delta_seconds;
-        if (boss_map_remaining_time_ <= 0.0f) {
-            boss_map_remaining_time_ = 0.0f;
-            is_boss_map_timer_active_ = false;
-            ProcessGameOver(TEXT("[타임아웃] 보스 맵 제한 시간 초과로 패배했습니다."));
-        }
-    }
 }
 
 // --- 패널티 연산 ---
@@ -65,13 +50,16 @@ void AChapter3_ShooterGame_GameMode::Tick(float delta_seconds) {
 int32 AChapter3_ShooterGame_GameMode::GetAllowedKillsForCurrentStage() const {
     FString current_level_name = UGameplayStatics::GetCurrentLevelName(this);
 
-    if (current_level_name.Contains(TEXT("Level2")) || current_level_name.Contains(TEXT("Stage2"))) {
+    // 임무 2 (Industrial_UnfinishedBuilding): 허용 처치 수 4마리
+    if (current_level_name.Contains(TEXT("Industrial_UnfinishedBuilding"))) {
         return 4;
     }
-    else if (current_level_name.Contains(TEXT("Level3")) || current_level_name.Contains(TEXT("Stage3")) || current_level_name.Contains(TEXT("Boss"))) {
+    // 임무 3 (DemoMap): 허용 처치 수 5마리
+    else if (current_level_name.Contains(TEXT("DemoMap"))) {
         return 5;
     }
 
+    // 임무 1 (기본 맵): 허용 처치 수 2마리
     return 2;
 }
 
@@ -103,7 +91,7 @@ int32 AChapter3_ShooterGame_GameMode::GetKillPenaltyAmount() const {
 void AChapter3_ShooterGame_GameMode::AddFarmingReward(int32 score_amount) {
     if (is_game_over_ || is_game_cleared_ || score_amount <= 0) return;
 
-    // 추가 점수 순수 누적 (이중 계산 방지)
+    // 추가 점수 순수 누적
     total_farming_reward_ += score_amount;
 
     // UI에 최종 연산된 스코어 전달
@@ -161,9 +149,7 @@ void AChapter3_ShooterGame_GameMode::ResetStageTimer() { stage_play_time_ = 0.0f
 void AChapter3_ShooterGame_GameMode::ResetAllTimers() {
     stage_play_time_ = 0.0f;
     detection_remaining_time_ = 0.0f;
-    boss_map_remaining_time_ = 0.0f;
     is_detection_timer_active_ = false;
-    is_boss_map_timer_active_ = false;
     was_detected_ = false;
 }
 
@@ -213,14 +199,12 @@ void AChapter3_ShooterGame_GameMode::CheckPlayerDeath() {
 void AChapter3_ShooterGame_GameMode::ProcessGameOver(const FString& fail_reason) {
     is_game_over_ = true;
     is_detection_timer_active_ = false;
-    is_boss_map_timer_active_ = false;
     on_game_over_.Broadcast(fail_reason);
 }
 
 void AChapter3_ShooterGame_GameMode::ProcessGameVictory(const FString& victory_reason) {
     is_game_cleared_ = true;
     is_detection_timer_active_ = false;
-    is_boss_map_timer_active_ = false;
 
     // 최종 점수를 획득 재화(Money)에 추가
     int32 final_reward = CalculateFinalScore();
