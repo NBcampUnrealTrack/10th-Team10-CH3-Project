@@ -42,6 +42,8 @@ public:
 	UPROPERTY(EditAnyWhere, BlueprintReadWrite, Category = "AI")
 	TArray<APawn*> moveRootPawns_;
 
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Attack")
+	bool isAttack_ = false;
 	UPROPERTY(EditAnywhere, Category = "Defense")
 	float defense_ = 0.0f;
 	UPROPERTY(EditAnywhere, Category = "Health")
