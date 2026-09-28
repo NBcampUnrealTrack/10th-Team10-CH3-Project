@@ -1,4 +1,4 @@
-#include "DistractionCoin.h"
+﻿#include "DistractionCoin.h"
 
 #include "CoinThrowSkillComponent.h"
 #include "Components/SphereComponent.h"
@@ -217,5 +217,5 @@ void ADistractionCoin::HandleProjectileStop(const FHitResult& hitResult) // 투�
 
     // 착지한 동전은 플레이어가 회수할 때까지 남겨 둔다.
     SetLifeSpan(0.0f);
-    onCoinLanded_.Broadcast(landingLocation, GetInstigator(), effectiveNoiseRange);
+    onCoinLanded_.Broadcast(landingLocation);
 }

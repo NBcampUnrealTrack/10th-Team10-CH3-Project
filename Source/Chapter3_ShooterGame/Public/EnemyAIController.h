@@ -19,27 +19,29 @@ public:
 private:
 	APawn* myPawn_;
 	APawn* playerPawn_;
+
 	FVector goalPoint_;
+	bool arriveGoal_;
 
 	FTimerHandle enemyBehaviorTimer_;
 	FTimerHandle reloadDelayTimer_;
 	FTimerHandle reloadTimer_;
 
 	UPROPERTY(EditAnyWhere, Category = "AI")
-	float sightRadius_ = 2000.0f;
+	float sightRadius_ = 1200.0f;
 	UPROPERTY(EditAnyWhere, Category = "AI")
-	float loseSightRadius_ = 3000.0f;
+	float loseSightRadius_ = 2000.0f;
 	UPROPERTY(EditAnyWhere, Category = "AI")
 	float moveRadius_ = 1000.0f;
 
 	UPROPERTY(EditAnyWhere, Category = "EnemyShooting", meta = (ClampMin = "0.0", Units = "cm"))
-	float fireRange_ = 0.0f;
+	float fireRange_ = 5000.0f;
 	UPROPERTY(EditAnyWhere, Category = "EnemyShooting", meta = (ClampMin = "0.0"))
-	float damage_ = 0.0f;
+	float damage_ = 20.0f;
 	UPROPERTY(EditDefaultsOnly, Category = "EnemyShooting", meta = (ClampMin = "0.0", Units = "s"))
-	float fireInterval_ = 0.0f;
+	float fireInterval_ = 0.5f;
 	UPROPERTY(EditDefaultsOnly, Category = "EnemyShooting|Magazine", meta = (ClampMin = "1", UIMin = "1"))
-	int32 magazineCapacity_ = 10;
+	int32 magazineCapacity_ = 5;
 	UPROPERTY(EditDefaultsOnly, Category = "EnemyShooting|Magazine", meta = (ClampMin = "0.2", Units = "s"))
 	float reloadDuration_ = 0.0f;
 	UPROPERTY(VisibleInstanceOnly, Category = "EnemyShooting|Magazine", meta = (AllowPrivateAccess = "true"))
@@ -63,6 +65,11 @@ protected:
 	virtual void OnPossess(APawn* InPawn) override;
 
 public:
+	bool moveRandom_;
+	TArray<APawn*> moveRootPawns_;
+
+	unsigned short nowMoveIndex_ = 0;
+
 	bool isCaptured_ = false;
 	float kMinimumReloadDuration = 0.2f;
 	float kDefaultReloadDuration = 1.8f;
@@ -72,10 +79,14 @@ public:
 	float GetLoseSightRadius(void) const;
 	float GetMoveRadius(void) const;
 
+	void MoveToDesignatedLocation(void);
 	void MoveToRandomLocation(void);
 	void MoveToPlayerLocation(void);
+
+	void MoveEnemy(void);
 	void StopEnemy(void);
 
+	void PauseEnemyBehaviorTimer(float pauseTime);
 	void ClearControllerTimer(void);
 
 	void Fire(void);
