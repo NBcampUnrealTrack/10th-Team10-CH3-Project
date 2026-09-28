@@ -18,7 +18,7 @@ AEnemyAIController::AEnemyAIController()
 	// 시야 범위에서 벗어난 후 시야를 잃는 범위
 	SightConfig->LoseSightRadius = loseSightRadius_;
 	// 시야각
-	SightConfig->PeripheralVisionAngleDegrees = 90.0f;
+	SightConfig->PeripheralVisionAngleDegrees = 75.0f;
 	SightConfig->SetMaxAge(3.0f);
 
 	SightConfig->DetectionByAffiliation.bDetectEnemies = true;
@@ -92,23 +92,17 @@ void AEnemyAIController::MoveToDesignatedLocation(void)
 	{
 		if (!arriveGoal_)
 		{
-			FVector nowLocation = myPawn_->GetActorLocation();
-			FVector goalLocation = goalPoint_;
+			float Distance = FVector::Distance(myPawn_->GetActorLocation(), goalPoint_);
 
-			nowLocation.Z = 0.0f;
-			goalLocation.Z = 0.0f;
-
-			if (nowLocation == goalLocation)
+			if (Distance < 100.0f)
 			{
 				arriveGoal_ = true;
+				return;
 			}
-
 			return;
 		}
 
-		GEngine->AddOnScreenDebugMessage(-1, 1.0f, FColor::Green, FString::Printf(TEXT("Move To Designated Location!")));
 		goalPoint_ = moveRootPawns_[nowMoveIndex_]->GetActorLocation();
-
 		if (nowMoveIndex_ < (moveRootPawns_.Num() - 1))
 		{
 			nowMoveIndex_++;

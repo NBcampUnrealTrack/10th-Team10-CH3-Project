@@ -28,9 +28,9 @@ private:
 	FTimerHandle reloadTimer_;
 
 	UPROPERTY(EditAnyWhere, Category = "AI")
-	float sightRadius_ = 1200.0f;
+	float sightRadius_ = 750.0f;
 	UPROPERTY(EditAnyWhere, Category = "AI")
-	float loseSightRadius_ = 2000.0f;
+	float loseSightRadius_ = 1000.0f;
 	UPROPERTY(EditAnyWhere, Category = "AI")
 	float moveRadius_ = 1000.0f;
 
