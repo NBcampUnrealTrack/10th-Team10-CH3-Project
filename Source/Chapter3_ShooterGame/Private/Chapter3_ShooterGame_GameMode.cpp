@@ -91,7 +91,7 @@ int32 AChapter3_ShooterGame_GameMode::GetKillPenaltyAmount() const {
 void AChapter3_ShooterGame_GameMode::AddFarmingReward(int32 score_amount) {
     if (is_game_over_ || is_game_cleared_ || score_amount <= 0) return;
 
-    // 추가 점수 순수 누적
+    // 추가 점수 순수 누적 (이중 계산 방지)
     total_farming_reward_ += score_amount;
 
     // UI에 최종 연산된 스코어 전달
