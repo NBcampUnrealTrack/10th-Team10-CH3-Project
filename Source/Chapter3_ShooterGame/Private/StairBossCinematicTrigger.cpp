@@ -5,6 +5,7 @@
 #include "Camera/PlayerCameraManager.h"
 #include "Blueprint/UserWidget.h"
 #include "Blueprint/WidgetBlueprintLibrary.h"
+#include "Chapter3_ShooterGame_GameMode.h"
 #include "Chapter3_ShooterGame_PlayerController.h"
 #include "CollisionShape.h"
 #include "Components/BoxComponent.h"
@@ -296,6 +297,17 @@ bool AStairBossCinematicTrigger::StartCinematic()
     {
         return false;
     }
+    const AChapter3_ShooterGame_GameMode* gameMode = Cast<AChapter3_ShooterGame_GameMode>(
+        UGameplayStatics::GetGameMode(this));
+    if (IsValid(gameMode) && (gameMode->IsGameOver() || gameMode->IsGameCleared()))
+    {
+        return false;
+    }
+    if (completeMissionOnFinish_ && !IsValid(gameMode))
+    {
+        ReportConfigurationError(TEXT("Complete Mission On Finish requires a Chapter3 ShooterGame GameMode in this level."));
+        return false;
+    }
     APlayerController* controller = UGameplayStatics::GetPlayerController(this, 0);
     APawn* pawn = IsValid(controller) ? controller->GetPawn() : nullptr;
     if (!IsValid(controller) || !controller->IsLocalController() || !IsValid(pawn)
@@ -474,7 +486,18 @@ void AStairBossCinematicTrigger::HandleSequenceFinished()
         return;
     }
     hasFinished_ = true;
-    if (holdBlackAtEnd_)
+    if (completeMissionOnFinish_)
+    {
+        // The HUD owns the existing victory/result UI. Restore it before broadcasting victory;
+        // restoring afterwards would overwrite the result screen's input and visibility state.
+        ReleaseCinematic();
+        if (AChapter3_ShooterGame_GameMode* gameMode = Cast<AChapter3_ShooterGame_GameMode>(
+            UGameplayStatics::GetGameMode(this)))
+        {
+            gameMode->OnTargetEliminated();
+        }
+    }
+    else if (holdBlackAtEnd_)
     {
         APlayerController* controller = playerController_.Get();
         if (IsValid(controller) && IsValid(controller->PlayerCameraManager))
@@ -493,8 +516,9 @@ void AStairBossCinematicTrigger::HandleSequenceFinished()
                 1.0f, 0.0f, returnFadeInDuration_, FLinearColor::Black, false, false);
         }
     }
-    UE_LOG(LogStairBossCinematic, Log, TEXT("%s: cinematic finished; hold black=%s."),
-        *GetName(), holdBlackAtEnd_ ? TEXT("true") : TEXT("false"));
+    UE_LOG(LogStairBossCinematic, Log, TEXT("%s: cinematic finished; complete mission=%s, hold black=%s."),
+        *GetName(), completeMissionOnFinish_ ? TEXT("true") : TEXT("false"),
+        !completeMissionOnFinish_ && holdBlackAtEnd_ ? TEXT("true") : TEXT("false"));
     onFinished_.Broadcast();
 }
 
