@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 
 #include "CoreMinimal.h"
 #include "Engine/GameInstance.h"
@@ -28,6 +28,9 @@ public:
     // Pickup instance guards duplicate calls; revisiting a map can award money again.
     UFUNCTION(BlueprintCallable, Category = "Progress|Money")
     bool AddMoney(int64 amount);
+
+    UFUNCTION(BlueprintCallable, Category = "Progress|Money")
+    bool SpendMoney(int64 amount);
 
     UFUNCTION(BlueprintCallable, Category = "Progress")
     bool CompleteMission(FName levelId, FGuid missionRunId, int64 rewardAmount, bool firstClearRewardOnly);
