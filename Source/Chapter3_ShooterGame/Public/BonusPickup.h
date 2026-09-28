@@ -27,10 +27,7 @@ public:
     float pickupRadius_ = 150.0f;
 
     UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Bonus Pickup|Reward", meta = (ClampMin = "0", UIMin = "0"))
-    int64 moneyReward_ = 100;
-
-    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Bonus Pickup|Reward", meta = (ClampMin = "0", UIMin = "0"))
-    int32 scoreReward_ = 0;
+    int32 scoreReward_ = 250;
 
     bool IsCollectorInRange(const APawn* collector) const;
 
@@ -40,7 +37,7 @@ public:
 
     // 보상 지급 후 호출되며, 이벤트 직후 Actor가 파괴된다.
     UFUNCTION(BlueprintImplementableEvent, Category = "Bonus Pickup")
-    void OnCollected(APawn* collector, int64 money, int32 score);
+    void OnCollected(APawn* collector, int32 score);
 
 protected:
     virtual void OnConstruction(const FTransform& transform) override;

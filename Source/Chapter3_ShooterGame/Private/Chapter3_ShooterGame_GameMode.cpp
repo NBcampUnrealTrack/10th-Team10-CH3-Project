@@ -18,7 +18,7 @@ void AChapter3_ShooterGame_GameMode::BeginPlay() {
 
     is_game_over_ = false;
     is_game_cleared_ = false;
-    total_farming_reward_ = 0;
+    total_farming_reward_ = 0; // 새 스테이지 시작 시 추가 파밍 점수 0으로 초기화
     is_target_eliminated_ = false;
 
     FString current_level_name = UGameplayStatics::GetCurrentLevelName(this);
@@ -103,14 +103,17 @@ int32 AChapter3_ShooterGame_GameMode::GetKillPenaltyAmount() const {
 void AChapter3_ShooterGame_GameMode::AddFarmingReward(int32 score_amount) {
     if (is_game_over_ || is_game_cleared_ || score_amount <= 0) return;
 
+    // 추가 점수 순수 누적 (이중 계산 방지)
     total_farming_reward_ += score_amount;
+
+    // UI에 최종 연산된 스코어 전달
     on_score_changed_.Broadcast(CalculateFinalScore());
 }
 
 // --- 최종 점수 연산 및 저장 ---
 
 int32 AChapter3_ShooterGame_GameMode::CalculateFinalScore() const {
-    // 최종 점수 = 3000 (기본) + 파밍 추가 보상 - 패널티(500)
+    // 최종 점수 = 기본(3000) + 추가 파밍 점수 - 패널티(0 또는 500)
     int32 final_score = kBaseScore + total_farming_reward_ - GetKillPenaltyAmount();
     return FMath::Max(0, final_score);
 }
