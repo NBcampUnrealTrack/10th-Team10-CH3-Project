@@ -6,6 +6,8 @@
 #include "GameFramework/Character.h"
 #include "Chapter3_ShooterGame_Character.generated.h"
 
+class UParkourPointComponent;
+
 UCLASS()
 class CHAPTER3_SHOOTERGAME_API AChapter3_ShooterGame_Character : public ACharacter
 {
@@ -71,6 +73,7 @@ public:
 
 protected:
 	void UpdateMovementSpeed();
+	UParkourPointComponent* FindUsableParkourPoint() const;
 	void TryVaultOrClimb();
 	void UpdateLean(float DeltaTime);
 	float CalculateSafeLeanAlpha(float DesiredAlpha) const;
@@ -96,6 +99,14 @@ public:
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Parkour")
 	float ParkourTraceDistance = 150.f;
+
+	// 파쿠르 포인트를 찾을 때 쓰는 구체 스윕의 반지름
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Parkour")
+	float ParkourTraceRadius = 40.f;
+
+	// 파쿠르 포인트 콜리전 컴포넌트가 반응해야 하는 채널
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Parkour")
+	TEnumAsByte<ECollisionChannel> ParkourTraceChannel = ECC_GameTraceChannel2;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Parkour")
 	float VaultCheckHeight = 100.f;
