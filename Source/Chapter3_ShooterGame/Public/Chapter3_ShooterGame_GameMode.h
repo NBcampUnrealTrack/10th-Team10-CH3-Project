@@ -43,12 +43,12 @@ public:
     UFUNCTION(BlueprintPure, Category = "Score|Farming")
     int32 GetTotalFarmingReward() const { return total_farming_reward_; }
 
-    // --- 최종 점수 및 재화 연산 ---
+    // --- UI 표시용 점수 개별 항목 및 최종 연산 ---
     UFUNCTION(BlueprintPure, Category = "Score|UI")
-    int32 GetBaseScore() const { return kBaseScore; } // 기본 점수 (3000)
+    int32 GetBaseScore() const { return kBaseScore; } // 1. 기본 점수 (3000점)
 
     UFUNCTION(BlueprintPure, Category = "Score|UI")
-    int32 CalculateFinalScore() const; // 최종 점수 = 3000 + 파밍 추가 보상 - 패널티(500)
+    int32 CalculateFinalScore() const; // 2. 최종 점수 = 기본(3000) + 파밍 - 패널티(500)
 
     UFUNCTION(BlueprintPure, Category = "Currency")
     int64 GetTotalCurrency() const;
