@@ -1,6 +1,5 @@
 ﻿#include "BonusPickup.h"
 
-#include "Chapter3GameInstance.h"
 #include "Chapter3_ShooterGame_GameMode.h"
 #include "Components/SphereComponent.h"
 #include "Components/StaticMeshComponent.h"
@@ -48,43 +47,30 @@ bool ABonusPickup::TryCollect(APawn* collector)
         return false;
     }
 
-    if (moneyReward_ < 0 || scoreReward_ < 0 || (moneyReward_ == 0 && scoreReward_ == 0))
+    if (scoreReward_ <= 0)
     {
-        UE_LOG(LogBonusPickup, Warning, TEXT("%s: Assign a positive money or score reward without negative values."), *GetName());
+        UE_LOG(LogBonusPickup, Warning, TEXT("%s: Assign a positive score reward."), *GetName());
         return false;
     }
 
     AChapter3_ShooterGame_GameMode* gameMode = Cast<AChapter3_ShooterGame_GameMode>(UGameplayStatics::GetGameMode(this));
-    if (IsValid(gameMode) && (gameMode->IsGameOver() || gameMode->IsGameCleared()))
+    if (!IsValid(gameMode) || gameMode->IsGameOver() || gameMode->IsGameCleared())
     {
-        return false;
-    }
-    if (scoreReward_ > 0 && (!IsValid(gameMode)))
-    {
-        UE_LOG(LogBonusPickup, Warning, TEXT("%s: Score reward requires an active Chapter3 GameMode and sufficient score capacity."), *GetName());
-        return false;
-    }
-
-    UChapter3GameInstance* progress = Cast<UChapter3GameInstance>(UGameplayStatics::GetGameInstance(this));
-    if (moneyReward_ > 0 && (!IsValid(progress) || !progress->IsProgressReady() || progress->GetMoney() > MAX_int64 - moneyReward_))
-    {
-        UE_LOG(LogBonusPickup, Warning, TEXT("%s: Money reward requires ready progress data and sufficient balance capacity."), *GetName());
         return false;
     }
 
     // 저장 및 점수 알림에서 다시 상호작용해도 같은 보상을 중복 지급하지 않는다.
     TGuardValue<bool> collectingGuard(isCollecting_, true);
-    const int64 awardedMoney = moneyReward_;
     const int32 awardedScore = scoreReward_;
-    if (awardedMoney > 0 && !progress->AddMoney(awardedMoney))
-    {
-        return false;
-    }
+
+    // GameMode의 파밍 추가 점수로 통합 더하기
+    gameMode->AddFarmingReward(awardedScore);
 
     isCollected_ = true;
     SetActorEnableCollision(false);
     SetActorHiddenInGame(true);
-    OnCollected(collector, awardedMoney, awardedScore);
+
+    OnCollected(collector, awardedScore);
     Destroy();
     return true;
 }

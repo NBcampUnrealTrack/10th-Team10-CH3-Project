@@ -94,6 +94,12 @@ public:
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Cinematic|Playback")
     bool holdBlackAtEnd_ = true;
 
+    // Restore the player/HUD before the GameMode broadcasts victory to the result widget.
+    // When enabled, this takes precedence over Hold Black At End.
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Cinematic|Completion",
+        meta = (DisplayName = "Complete Mission On Finish", ToolTip = "On natural sequence completion, restore player/UI state and complete the mission through the current GameMode. Overrides Hold Black At End. Stopping or cancelling does not complete the mission."))
+    bool completeMissionOnFinish_ = true;
+
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Cinematic|Playback")
     bool preserveSequenceStateOnFinish_ = false;
 
