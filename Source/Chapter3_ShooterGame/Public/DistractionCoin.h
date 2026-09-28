@@ -1,4 +1,4 @@
-﻿#pragma once
+#pragma once
 
 #include "CoreMinimal.h"
 #include "GameFramework/Actor.h"
@@ -10,7 +10,8 @@ class UStaticMeshComponent;
 class UProjectileMovementComponent;
 class USoundBase;
 
-DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnCoinLanded, FVector, landingLocation);
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_ThreeParams(FOnCoinLanded,
+    FVector, landingLocation, APawn*, thrower, float, noiseRange);
 
 // 첫 충돌 위치를 알리는 투척물. 적의 반응은 AI 쪽에서 처리한다.
 UCLASS()

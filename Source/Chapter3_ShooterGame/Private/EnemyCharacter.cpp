@@ -3,7 +3,6 @@
 #include "DistractionCoin.h"
 #include "MainGameState.h"
 #include "Kismet/GameplayStatics.h"
-#include "Components/CapsuleComponent.h"
 #include "GameFramework/CharacterMovementComponent.h"
 
 AEnemyCharacter::AEnemyCharacter()
@@ -23,21 +22,6 @@ AEnemyCharacter::AEnemyCharacter()
 
 	PrimaryActorTick.bCanEverTick = false;
 }
-
-void AEnemyCharacter::SendMoveRootPawns(void)
-{
-	if (AEnemyAIController* enemyAIController = Cast<AEnemyAIController>(GetController()))
-	{
-		if (moveRootPawns_.Num() < 1)
-		{
-			enemyAIController->moveRandom_ = true;
-			return;
-		}
-		enemyAIController->moveRandom_ = false;
-		enemyAIController->moveRootPawns_ = moveRootPawns_;
-	}
-}
-
 void AEnemyCharacter::SetMovementSpeed(void)
 {
 	if (UCharacterMovementComponent* Movement = GetCharacterMovement())
@@ -61,6 +45,7 @@ void AEnemyCharacter::AlertCalculation(void)
 			if (APawn* playerPawn = UGameplayStatics::GetPlayerPawn(GetWorld(), 0))
 			{
 				float distanceToPlayer = FVector::Distance(GetActorLocation(), playerPawn->GetActorLocation());
+				enemyAIController->SetFocus(playerPawn);
 
 				if (distanceToPlayer > sightRadius_ / 2.0f)
 				{
@@ -133,27 +118,8 @@ void AEnemyCharacter::DestroyEnemy(void)
 		GetWorldTimerManager().ClearTimer(EnemyAttackIntervalTimer_);
 		enemyAIController->ClearControllerTimer();
 
-		if (currentHealth_ > 0)
-		{
-			Destroy();
-			return;
-		}
+		Destroy();
 	}
-
-	FTimerHandle deleyDestroyTimer;
-	USkeletalMeshComponent* meshComponent = GetMesh();
-	UCharacterMovementComponent* movementComponent = GetCharacterMovement();
-
-	GetCapsuleComponent()->SetCollisionEnabled(ECollisionEnabled::NoCollision);
-
-	movementComponent->StopMovementImmediately();
-	movementComponent->DisableMovement();
-
-	meshComponent->SetCollisionObjectType(ECC_WorldStatic);
-	meshComponent->SetSimulatePhysics(true);
-	meshComponent->WakeAllRigidBodies();
-
-	GetWorldTimerManager().SetTimer(deleyDestroyTimer, [this](){Destroy();}, 5.0f, false);
 }
 
 void AEnemyCharacter::BeginPlay()
@@ -172,10 +138,9 @@ void AEnemyCharacter::BeginPlay()
 
 		if (enemyType_ == EEnemyType::bodyguard)
 		{
-			defense_ = 2.5f;
-
 			walkSpeed_ *= 0.75f;
 			runSpeed_ *= 0.75f;
+
 			Movement->MaxWalkSpeed = walkSpeed_;
 		}
 		else
@@ -193,23 +158,9 @@ void AEnemyCharacter::BeginPlay()
 	if (AEnemyAIController* enemyAIController = Cast<AEnemyAIController>(GetController()))
 	{
 		sightRadius_ = enemyAIController->GetSightRadius();
-
-		SendMoveRootPawns();
-		enemyAIController->MoveEnemy();
 	}
 
 	GetWorldTimerManager().SetTimer(EnemyStateUpdateTimer_, this, &AEnemyCharacter::AlertCalculation, 0.25f, true);
-}
-void AEnemyCharacter::EndPlay(const EEndPlayReason::Type EndPlayReason)
-{
-	if (AEnemyAIController* enemyAIController = Cast<AEnemyAIController>(GetController()))
-	{
-		GetWorldTimerManager().ClearTimer(EnemyStateUpdateTimer_);
-		GetWorldTimerManager().ClearTimer(EnemyAttackIntervalTimer_);
-		enemyAIController->ClearControllerTimer();
-	}
-
-	Super::EndPlay(EndPlayReason);
 }
 float AEnemyCharacter::TakeDamage(float DamageAmount, struct FDamageEvent const& DamageEvent, AController* EventInstigator, AActor* DamageCauser)
 {
@@ -227,15 +178,13 @@ float AEnemyCharacter::TakeDamage(float DamageAmount, struct FDamageEvent const&
 	return ActualDamage;
 }
 
-void AEnemyCharacter::StartFire(void)
-{
+void AEnemyCharacter::StartFire(void) {
 	if (AEnemyAIController* enemyAIController = Cast<AEnemyAIController>(GetController()))
 	{
 		enemyAIController->Fire();
 	}
 }
-void AEnemyCharacter::OnDeath(void)
-{
+void AEnemyCharacter::OnDeath(void) {
 	//적 AI 사망 정보 GameState에 전송해야 함!
 	if (AMainGameState* mainGameState = GetWorld()->GetGameState<AMainGameState>())
 	{
@@ -250,37 +199,9 @@ void AEnemyCharacter::OnOverlapBegin(UPrimitiveComponent* OverlappedComp, AActor
 	UPrimitiveComponent* OtherComp, int32 OtherBodyIndex,
 	bool bFromSweep, const FHitResult& SweepResult)
 {
-	if (OtherActor->IsA<ADistractionCoin>())
+	if (ADistractionCoin* verifiedCoin = Cast<ADistractionCoin>(OtherActor))
 	{
-		ADistractionCoin* coin = Cast<ADistractionCoin>(OtherActor);
-		coin->onCoinLanded_.AddDynamic(this, &AEnemyCharacter::AcceptedLocation);
-	}
-}
-void AEnemyCharacter::AcceptedLocation(FVector landingLocation)
-{
-	GEngine->AddOnScreenDebugMessage(-1, 1.0f, FColor::Green, FString::Printf(TEXT("Captured Coin!")));
-	FVector Direction = landingLocation - GetActorLocation();
-
-	FRotator LookAtRotation = Direction.Rotation();
-	LookAtRotation.Pitch = 0.0f;
-	LookAtRotation.Roll = 0.0f;
-
-	if (AEnemyAIController* enemyAIController = Cast<AEnemyAIController>(GetController()))
-	{
-		if (alertType_ != EAlertType::patrol)
-		{
-			return;
-		}
-
-		if (enemyAIController->GetFocusActor())
-		{
-			enemyAIController->ClearFocus(EAIFocusPriority::Gameplay);
-		}
-
-		enemyAIController->PauseEnemyBehaviorTimer(FMath::FRandRange(5.0f, 10.0f));
-		enemyAIController->StopEnemy();
-
-		SetActorRotation(LookAtRotation);
+		GEngine->AddOnScreenDebugMessage(-1, 5.0f, FColor::Red, FString::Printf(TEXT("Overlap Coin!")));
 	}
 }
 
