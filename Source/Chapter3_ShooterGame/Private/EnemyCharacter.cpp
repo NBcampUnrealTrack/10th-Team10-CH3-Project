@@ -97,12 +97,11 @@ void AEnemyCharacter::AlertCalculation(void)
 					//적 AI의 공격 범위 안에 처음 들어온 경우
 					if (alertType_ != EAlertType::attack)
 					{
-						GEngine->AddOnScreenDebugMessage(-1, 1.0f, FColor::Red, FString::Printf(TEXT("Mode: Attack!")));
-
 						alertType_ = EAlertType::attack;
 						enemyAIController->StopEnemy();
 
 						//적 AI 공격 구현
+						isAttack_ = true;
 						GetWorldTimerManager().SetTimer(EnemyAttackIntervalTimer_, this, &AEnemyCharacter::StartFire, 1.0f, true);
 					}
 					return;
@@ -116,6 +115,8 @@ void AEnemyCharacter::AlertCalculation(void)
 			if (alertType_ != EAlertType::patrol)
 			{
 				alertType_ = EAlertType::patrol;
+
+				isAttack_ = false;
 				GetWorldTimerManager().ClearTimer(EnemyAttackIntervalTimer_);
 				SetMovementSpeed();
 
