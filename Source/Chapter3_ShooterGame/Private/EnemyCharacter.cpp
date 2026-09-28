@@ -103,6 +103,7 @@ void AEnemyCharacter::AlertCalculation(void)
 						enemyAIController->StopEnemy();
 
 						//적 AI 공격 구현
+						isAttack_ = true;
 						GetWorldTimerManager().SetTimer(EnemyAttackIntervalTimer_, this, &AEnemyCharacter::StartFire, 1.0f, true);
 					}
 					return;
@@ -116,6 +117,8 @@ void AEnemyCharacter::AlertCalculation(void)
 			if (alertType_ != EAlertType::patrol)
 			{
 				alertType_ = EAlertType::patrol;
+
+				isAttack_ = false;
 				GetWorldTimerManager().ClearTimer(EnemyAttackIntervalTimer_);
 				SetMovementSpeed();
 
