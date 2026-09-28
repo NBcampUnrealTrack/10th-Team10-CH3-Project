@@ -28,6 +28,21 @@ private:
     void TryTeleport();
 
     
+    bool bIsTeleporting = false;
+
+  
+    UPROPERTY(EditAnywhere, Category = "Elevator|Fade",
+        meta = (ClampMin = "0.01"))
+    float FadeDuration = 0.3f;
+
+  
+    FTimerHandle TeleportTimerHandle;
+    FTimerHandle FadeFinishTimerHandle;
+
+    void ExecuteTeleport();
+
+ 
+    void FinishTeleport();
     UPROPERTY(VisibleAnywhere, Category = "Elevator")
     TObjectPtr<UBoxComponent> InteractionBox;
 

@@ -179,10 +179,21 @@ void AChapter3_ShooterGame_Character::TryVaultOrClimb()
         return;
     }
 
+	FVector launchDirection = point->GetLaunchDirection().GetSafeNormal2D();
+	const FVector characterForward = GetActorForwardVector().GetSafeNormal2D();
+
+	if (FVector::DotProduct(launchDirection, characterForward) < 0.f)
+	{
+		launchDirection *= -1.f;
+	}
+
+	const FVector launchVelocity =
+		launchDirection * point->LaunchForwardSpeed
+		+ FVector(0.f, 0.f, point->LaunchUpwardSpeed);
+
+
     OnVaultStart();
 
-    const FVector launchVelocity = point->GetLaunchDirection() * point->LaunchForwardSpeed
-        + FVector(0, 0, point->LaunchUpwardSpeed);
     LaunchCharacter(launchVelocity, true, true);
 }
 
