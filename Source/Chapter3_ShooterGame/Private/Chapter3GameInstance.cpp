@@ -1,5 +1,4 @@
 #include "Chapter3GameInstance.h"
-
 #include "Chapter3SaveGame.h"
 #include "Kismet/GameplayStatics.h"
 
@@ -8,7 +7,7 @@ DEFINE_LOG_CATEGORY_STATIC(LogChapter3Progress, Log, All);
 void UChapter3GameInstance::Init()
 {
     InitializeProgress(TEXT("Chapter3_Progress"));
-    // Blueprint ReceiveInit must see the loaded profile.
+
     Super::Init();
 }
 
@@ -69,7 +68,6 @@ bool UChapter3GameInstance::SaveProgress()
     {
         return Fail(TEXT("Progress is not loaded. Refusing to overwrite the save file."));
     }
-    // Small progress file: synchronous writes serialize requests and finish before level travel.
     savePending_ = true;
     if (!UGameplayStatics::SaveGameToSlot(progress_, slotName_, 0))
     {
@@ -105,6 +103,18 @@ bool UChapter3GameInstance::AddMoney(int64 amount)
     return true;
 }
 
+bool UChapter3GameInstance::SpendMoney(int64 amount)
+{
+    if (!progressReady_ || !progress_ || amount <= 0 || progress_->Money < amount)
+    {
+        return false;
+    }
+    progress_->Money -= amount;
+    SaveProgress();
+    OnProgressChanged.Broadcast();
+    return true;
+}
+
 bool UChapter3GameInstance::CompleteMission(FName levelId, FGuid missionRunId, int64 rewardAmount, bool firstClearRewardOnly)
 {
     if (!progressReady_ || !progress_ || levelId.IsNone() || !missionRunId.IsValid() || rewardAmount < 0 ||
@@ -118,7 +128,6 @@ bool UChapter3GameInstance::CompleteMission(FName levelId, FGuid missionRunId, i
         return false;
     }
 
-    // These fields are committed together, including the deduplication key.
     progress_->ClearedLevelIds.Add(levelId);
     progress_->Money += grantedReward;
     progress_->RewardedMissionRuns.Add(missionRunId);

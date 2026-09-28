@@ -4,6 +4,7 @@
 #include "UnlockInventoryPickup.h"
 #include "BonusPickup.h"
 #include "DistractionCoin.h"
+#include "ParkourPointComponent.h"
 #include "EngineUtils.h"
 #include "GameFramework/CharacterMovementComponent.h"
 #include "GameFramework/PlayerController.h"
@@ -143,33 +144,46 @@ void AChapter3_ShooterGame_Character::TryParkour()
 	TryVaultOrClimb();
 }
 
+UParkourPointComponent* AChapter3_ShooterGame_Character::FindUsableParkourPoint() const
+{
+    TArray<UPrimitiveComponent*> overlappingComponents;
+    GetOverlappingComponents(overlappingComponents);
+
+    UParkourPointComponent* bestPoint = nullptr;
+    double bestDistanceSquared = TNumericLimits<double>::Max();
+
+    for (UPrimitiveComponent* component : overlappingComponents)
+    {
+        UParkourPointComponent* point = Cast<UParkourPointComponent>(component);
+        if (!IsValid(point) || !point->CanBeUsedBy(this))
+        {
+            continue;
+        }
+
+        const double distanceSquared = FVector::DistSquared(GetActorLocation(), point->GetComponentLocation());
+        if (distanceSquared < bestDistanceSquared)
+        {
+            bestDistanceSquared = distanceSquared;
+            bestPoint = point;
+        }
+    }
+    return bestPoint;
+}
+
 void AChapter3_ShooterGame_Character::TryVaultOrClimb()
 {
-	const FVector Start = GetActorLocation();
-	const FVector Forward = GetActorForwardVector();
-	const FVector End = Start + Forward * ParkourTraceDistance;
+    UParkourPointComponent* point = FindUsableParkourPoint();
+    if (!point)
+    {
+        // 파쿠르 포인트가 없으면 아무일도 없음
+        return;
+    }
 
-	FHitResult Hit;
-	FCollisionQueryParams QueryParams;
-	QueryParams.AddIgnoredActor(this);
+    OnVaultStart();
 
-	const bool bHit = GetWorld()->LineTraceSingleByChannel(Hit, Start, End, ECC_Visibility, QueryParams);
-
-	if (bHit)
-	{
-		const FVector LedgeCheckStart = Hit.ImpactPoint + FVector(0, 0, VaultCheckHeight);
-		const FVector LedgeCheckEnd = LedgeCheckStart - FVector(0, 0, VaultCheckHeight);
-
-		FHitResult LedgeHit;
-		const bool bLedgeHit = GetWorld()->LineTraceSingleByChannel(LedgeHit, LedgeCheckStart, LedgeCheckEnd, ECC_Visibility, QueryParams);
-
-		if (bLedgeHit)
-		{
-			OnVaultStart();
-
-			LaunchCharacter(Forward * (SprintSpeed * 0.5f) + FVector(0, 0, VaultCheckHeight * 4.f), true, true);
-		}
-	}
+    const FVector launchVelocity = point->GetLaunchDirection() * point->LaunchForwardSpeed
+        + FVector(0, 0, point->LaunchUpwardSpeed);
+    LaunchCharacter(launchVelocity, true, true);
 }
 
 void AChapter3_ShooterGame_Character::Interact()

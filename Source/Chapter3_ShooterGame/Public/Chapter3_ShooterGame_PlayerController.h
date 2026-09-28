@@ -16,6 +16,7 @@ class ADistractionCoin;
 class USlowMotionSkillComponent;
 class UAssassinationTargetComponent;
 class UUnlockInventoryComponent;
+class UWeaponCustomizationWidget;
 
 USTRUCT()
 struct FWeaponViewSlotState
@@ -41,6 +42,15 @@ public:
 
     UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Unlock Inventory")
     TObjectPtr<UUnlockInventoryComponent> unlockInventory_ = nullptr;
+
+    UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Shop")
+    TSubclassOf<UWeaponCustomizationWidget> WeaponCustomizationWidgetClass;
+
+    UFUNCTION(BlueprintCallable, Category = "Shop")
+    void ToggleWeaponCustomization();
+
+    UFUNCTION(BlueprintPure, Category = "Shop")
+    bool IsWeaponCustomizationOpen() const;
 
 protected:
 	virtual void BeginPlay() override;
@@ -281,4 +291,7 @@ private:
     int32 equippedWeaponIndex_ = INDEX_NONE;
     bool weaponInventoryInitialized_ = false;
     bool switchingWeapon_ = false;
+
+    UPROPERTY(Transient)
+    TObjectPtr<UWeaponCustomizationWidget> weaponCustomizationWidget_ = nullptr;
 };
