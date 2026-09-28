@@ -273,11 +273,7 @@ void AEnemyCharacter::AcceptedLocation(FVector landingLocation)
 			return;
 		}
 
-		if (enemyAIController->GetFocusActor())
-		{
-			enemyAIController->ClearFocus(EAIFocusPriority::Gameplay);
-		}
-
+		enemyAIController->ClearFocus(EAIFocusPriority::Gameplay);
 		enemyAIController->PauseEnemyBehaviorTimer(FMath::FRandRange(5.0f, 10.0f));
 		enemyAIController->StopEnemy();
 
