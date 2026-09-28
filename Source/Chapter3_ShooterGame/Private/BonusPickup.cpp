@@ -1,4 +1,4 @@
-#include "BonusPickup.h"
+﻿#include "BonusPickup.h"
 
 #include "Chapter3GameInstance.h"
 #include "Chapter3_ShooterGame_GameMode.h"
@@ -59,7 +59,7 @@ bool ABonusPickup::TryCollect(APawn* collector)
     {
         return false;
     }
-    if (scoreReward_ > 0 && (!IsValid(gameMode) || gameMode->GetCurrentScore() > MAX_int32 - scoreReward_))
+    if (scoreReward_ > 0 && (!IsValid(gameMode)))
     {
         UE_LOG(LogBonusPickup, Warning, TEXT("%s: Score reward requires an active Chapter3 GameMode and sufficient score capacity."), *GetName());
         return false;
@@ -79,10 +79,6 @@ bool ABonusPickup::TryCollect(APawn* collector)
     if (awardedMoney > 0 && !progress->AddMoney(awardedMoney))
     {
         return false;
-    }
-    if (awardedScore > 0)
-    {
-        gameMode->AddScore(awardedScore);
     }
 
     isCollected_ = true;
