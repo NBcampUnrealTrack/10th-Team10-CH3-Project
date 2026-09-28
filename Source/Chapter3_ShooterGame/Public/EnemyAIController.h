@@ -19,7 +19,9 @@ public:
 private:
 	APawn* myPawn_;
 	APawn* playerPawn_;
+
 	FVector goalPoint_;
+	bool arriveGoal_;
 
 	FTimerHandle enemyBehaviorTimer_;
 	FTimerHandle reloadDelayTimer_;

@@ -29,6 +29,7 @@ AEnemyAIController::AEnemyAIController()
 	AIPerception->SetDominantSense(SightConfig->GetSenseImplementation());
 
 	reloadDuration_ = 0.0f;
+	arriveGoal_ = true;
 }
 
 float AEnemyAIController::GetSightRadius(void) const
@@ -52,7 +53,8 @@ void AEnemyAIController::OnPerceptionUpdated(AActor* Actor, FAIStimulus Stimulus
 
 		//적 AI가 플레이어를 감지했을 때
 		isCaptured_ = true;
-		SetFocus(playerPawn_, EAIFocusPriority::Gameplay);
+		SetFocus(playerPawn_);
+		//SetFocus(playerPawn_, EAIFocusPriority::Gameplay);
 		GetWorldTimerManager().ClearTimer(enemyBehaviorTimer_);
 		MoveToPlayerLocation();
 	}
@@ -62,6 +64,7 @@ void AEnemyAIController::OnPerceptionUpdated(AActor* Actor, FAIStimulus Stimulus
 		isCaptured_ = false;
 		ClearFocus(EAIFocusPriority::Gameplay);
 
+		arriveGoal_ = true;
 		MoveEnemy();
 	}
 }
@@ -87,15 +90,24 @@ void AEnemyAIController::MoveToDesignatedLocation(void)
 {
 	if (myPawn_)
 	{
-		if (moveRootPawns_[nowMoveIndex_])
+		if (!arriveGoal_)
 		{
-			GEngine->AddOnScreenDebugMessage(-1, 1.0f, FColor::Green, FString::Printf(TEXT("Move To Designated Location!")));
-			goalPoint_ = moveRootPawns_[nowMoveIndex_]->GetActorLocation();
+			FVector nowLocation = myPawn_->GetActorLocation();
+			FVector goalLocation = goalPoint_;
+
+			nowLocation.Z = 0.0f;
+			goalLocation.Z = 0.0f;
+
+			if (nowLocation == goalLocation)
+			{
+				arriveGoal_ = true;
+			}
+
+			return;
 		}
-		else
-		{
-			goalPoint_ = myPawn_->GetActorLocation();
-		}
+
+		GEngine->AddOnScreenDebugMessage(-1, 1.0f, FColor::Green, FString::Printf(TEXT("Move To Designated Location!")));
+		goalPoint_ = moveRootPawns_[nowMoveIndex_]->GetActorLocation();
 
 		if (nowMoveIndex_ < (moveRootPawns_.Num() - 1))
 		{
@@ -106,6 +118,7 @@ void AEnemyAIController::MoveToDesignatedLocation(void)
 			nowMoveIndex_ = 0;
 		}
 
+		arriveGoal_ = false;
 		MoveToLocation(goalPoint_);
 	}
 }
@@ -146,7 +159,7 @@ void AEnemyAIController::MoveEnemy(void)
 	}
 	else
 	{
-		GetWorldTimerManager().SetTimer(enemyBehaviorTimer_, this, &AEnemyAIController::MoveToDesignatedLocation, FMath::FRandRange(2.0f, 3.5f), true);
+		GetWorldTimerManager().SetTimer(enemyBehaviorTimer_, this, &AEnemyAIController::MoveToDesignatedLocation, 3.0f, true);
 	}
 }
 void AEnemyAIController::StopEnemy(void)
@@ -156,6 +169,7 @@ void AEnemyAIController::StopEnemy(void)
 
 void AEnemyAIController::PauseEnemyBehaviorTimer(float pauseTime)
 {
+	arriveGoal_ = true;
 	GetWorldTimerManager().ClearTimer(enemyBehaviorTimer_);
 
 	if (moveRandom_)
@@ -164,7 +178,7 @@ void AEnemyAIController::PauseEnemyBehaviorTimer(float pauseTime)
 	}
 	else
 	{
-		GetWorldTimerManager().SetTimer(enemyBehaviorTimer_, this, &AEnemyAIController::MoveToDesignatedLocation, FMath::FRandRange(2.0f, 3.5f), true, pauseTime);
+		GetWorldTimerManager().SetTimer(enemyBehaviorTimer_, this, &AEnemyAIController::MoveToDesignatedLocation, 3.5f, true, pauseTime);
 	}
 }
 void AEnemyAIController::ClearControllerTimer(void)
