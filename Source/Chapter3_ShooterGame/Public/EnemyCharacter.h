@@ -59,6 +59,8 @@ public:
 protected:
 	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = "Sound Collision")
 	USphereComponent* soundTriggerCollision_;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Audio")
+	USoundCue* pistolFireSound_;
 
 	virtual void BeginPlay() override;
 	virtual void EndPlay(const EEndPlayReason::Type EndPlayReason) override;

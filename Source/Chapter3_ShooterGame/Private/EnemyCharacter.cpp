@@ -2,6 +2,7 @@
 #include "EnemyAIController.h"
 #include "DistractionCoin.h"
 #include "MainGameState.h"
+#include "Sound/SoundCue.h"
 #include "Kismet/GameplayStatics.h"
 #include "Components/CapsuleComponent.h"
 #include "GameFramework/CharacterMovementComponent.h"
@@ -22,6 +23,13 @@ AEnemyCharacter::AEnemyCharacter()
 	soundTriggerCollision_->SetGenerateOverlapEvents(true);
 
 	PrimaryActorTick.bCanEverTick = false;
+
+	static ConstructorHelpers::FObjectFinder<USoundCue> SoundCueAsset(TEXT("/Game/Sound/Free_Sounds_Pack/cue/Gunshot_1-1_Cue.Gunshot_1-1_Cue"));
+
+	if (SoundCueAsset.Succeeded())
+	{
+		pistolFireSound_ = SoundCueAsset.Object;
+	}
 }
 
 void AEnemyCharacter::SendMoveRootPawns(void)
@@ -232,6 +240,12 @@ void AEnemyCharacter::StartFire(void)
 {
 	if (AEnemyAIController* enemyAIController = Cast<AEnemyAIController>(GetController()))
 	{
+		if (pistolFireSound_)
+		{
+			FVector SpawnLocation = GetActorLocation();
+			UGameplayStatics::PlaySoundAtLocation(GetWorld(), pistolFireSound_, SpawnLocation);
+		}
+
 		enemyAIController->Fire();
 	}
 }
