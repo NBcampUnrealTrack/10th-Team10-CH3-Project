@@ -64,6 +64,26 @@ public:
     UFUNCTION(BlueprintPure, Category = "Cinematic")
     bool IsCinematicActive() const { return playerStateCaptured_; }
 
+    // 저장된 수집품만 판정한다. 현재 플레이어의 인벤토리 슬롯에는 의존하지 않는다.
+    UFUNCTION(BlueprintPure, Category = "Cinematic|Ending")
+    bool CanPlayHiddenEnding() const;
+
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Cinematic|Ending")
+    bool selectEndingByCollectibles_ = false;
+
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Cinematic|Ending",
+        meta = (EditCondition = "selectEndingByCollectibles_"))
+    TArray<FName> requiredCollectibleIds_ = { FName(TEXT("Dossier")), FName(TEXT("Letter")), FName(TEXT("Photoframe")) };
+
+    // 기존 Sequence Actor/Asset은 노말 엔딩용으로 유지한다.
+    UPROPERTY(EditInstanceOnly, BlueprintReadWrite, Category = "Cinematic|Ending",
+        meta = (EditCondition = "selectEndingByCollectibles_"))
+    TObjectPtr<ALevelSequenceActor> hiddenEndingSequenceActor_ = nullptr;
+
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Cinematic|Ending",
+        meta = (EditCondition = "selectEndingByCollectibles_"))
+    TObjectPtr<ULevelSequence> hiddenEndingSequenceAsset_ = nullptr;
+
     UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Cinematic|Trigger")
     TObjectPtr<UBoxComponent> triggerBox_ = nullptr;
 

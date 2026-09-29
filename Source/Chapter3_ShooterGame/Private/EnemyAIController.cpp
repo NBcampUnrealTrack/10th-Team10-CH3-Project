@@ -18,7 +18,7 @@ AEnemyAIController::AEnemyAIController()
 	// 시야 범위에서 벗어난 후 시야를 잃는 범위
 	SightConfig->LoseSightRadius = loseSightRadius_;
 	// 시야각
-	SightConfig->PeripheralVisionAngleDegrees = 90.0f;
+	SightConfig->PeripheralVisionAngleDegrees = 60.0f;
 	SightConfig->SetMaxAge(3.0f);
 
 	SightConfig->DetectionByAffiliation.bDetectEnemies = true;
