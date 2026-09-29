@@ -62,9 +62,9 @@ void AEnemyCharacter::AlertCalculation(void)
 			{
 				float distanceToPlayer = FVector::Distance(GetActorLocation(), playerPawn->GetActorLocation());
 
-				if (distanceToPlayer > sightRadius_ / 2.0f)
+				if (distanceToPlayer > sightRadius_ / 1.25f)
 				{
-					if (distanceToPlayer < sightRadius_ - 50.0f)
+					if (distanceToPlayer < sightRadius_)
 					{
 						//적 AI의 시야 범위 안에 처음 들어온 경우
 						if (alertType_ != EAlertType::caution)
@@ -77,9 +77,9 @@ void AEnemyCharacter::AlertCalculation(void)
 					return;
 				}
 
-				if (distanceToPlayer > sightRadius_ / 4.0f)
+				if (distanceToPlayer > sightRadius_ / 1.75f)
 				{
-					if (distanceToPlayer < sightRadius_ / 3.0f)
+					if (distanceToPlayer < sightRadius_ / 1.5f)
 					{
 						//적 AI의 발각 범위 안에 처음 들어온 경우
 						if (alertType_ != EAlertType::detection)
@@ -92,7 +92,7 @@ void AEnemyCharacter::AlertCalculation(void)
 					return;
 				}
 
-				if (distanceToPlayer < sightRadius_ / 5.0f)
+				if (distanceToPlayer < sightRadius_ / 2.0f)
 				{
 					//적 AI의 공격 범위 안에 처음 들어온 경우
 					if (alertType_ != EAlertType::attack)
