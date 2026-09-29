@@ -254,7 +254,7 @@ void AEnemyCharacter::OnOverlapBegin(UPrimitiveComponent* OverlappedComp, AActor
 	if (OtherActor->IsA<ADistractionCoin>())
 	{
 		ADistractionCoin* coin = Cast<ADistractionCoin>(OtherActor);
-		coin->onCoinLanded_.AddDynamic(this, &AEnemyCharacter::AcceptedLocation);
+		coin->onCoinLanded_.AddUniqueDynamic(this, &AEnemyCharacter::AcceptedLocation);
 	}
 }
 void AEnemyCharacter::AcceptedLocation(FVector landingLocation)
