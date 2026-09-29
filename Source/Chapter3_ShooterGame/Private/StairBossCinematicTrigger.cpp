@@ -5,6 +5,7 @@
 #include "Camera/PlayerCameraManager.h"
 #include "Blueprint/UserWidget.h"
 #include "Blueprint/WidgetBlueprintLibrary.h"
+#include "Chapter3GameInstance.h"
 #include "Chapter3_ShooterGame_GameMode.h"
 #include "Chapter3_ShooterGame_PlayerController.h"
 #include "CollisionShape.h"
@@ -223,29 +224,66 @@ void AStairBossCinematicTrigger::ReportConfigurationError(const TCHAR* message)
     }
 }
 
+bool AStairBossCinematicTrigger::CanPlayHiddenEnding() const
+{
+    const UChapter3GameInstance* progress = Cast<UChapter3GameInstance>(GetGameInstance());
+    if (!IsValid(progress) || !progress->IsProgressReady() || requiredCollectibleIds_.IsEmpty())
+    {
+        return false;
+    }
+    for (const FName itemId : requiredCollectibleIds_)
+    {
+        if (itemId.IsNone() || !progress->HasCollectedItem(itemId))
+        {
+            return false;
+        }
+    }
+    return true;
+}
+
 bool AStairBossCinematicTrigger::PrepareSequencePlayer()
 {
-    if (IsValid(sequenceActor_))
+    // 재생 직전에 판정하고, 선택한 쌍만 사용한다. 노말 Actor가 히든 Asset보다
+    // 우선되거나 기존 레벨 Actor의 시퀀스를 덮어쓰지 않도록 한다.
+    if (selectEndingByCollectibles_)
     {
-        if (sequenceActor_->GetWorld() != GetWorld() || !IsValid(sequenceActor_->GetSequence()))
+        const UChapter3GameInstance* progress = Cast<UChapter3GameInstance>(GetGameInstance());
+        if (!IsValid(progress) || !progress->IsProgressReady()
+            || requiredCollectibleIds_.IsEmpty() || requiredCollectibleIds_.Contains(NAME_None))
+        {
+            ReportConfigurationError(TEXT("Ending selection requires loaded progress and nonempty collectible IDs."));
+            return false;
+        }
+    }
+    const bool hiddenEnding = selectEndingByCollectibles_ && CanPlayHiddenEnding();
+    ALevelSequenceActor* selectedActor = hiddenEnding ? hiddenEndingSequenceActor_.Get() : sequenceActor_.Get();
+    ULevelSequence* selectedAsset = hiddenEnding ? hiddenEndingSequenceAsset_.Get() : sequenceAsset_.Get();
+    if (hiddenEnding && !IsValid(selectedActor) && !IsValid(selectedAsset))
+    {
+        ReportConfigurationError(TEXT("All collectibles acquired: assign Hidden Ending Sequence Actor or Asset. Normal ending was not played."));
+        return false;
+    }
+    if (IsValid(selectedActor))
+    {
+        if (selectedActor->GetWorld() != GetWorld() || !IsValid(selectedActor->GetSequence()))
         {
             ReportConfigurationError(TEXT("Assign a Level Sequence Actor with a valid sequence in this level."));
             return false;
         }
-        if (IsValid(sequenceAsset_) && sequenceActor_->GetSequence() != sequenceAsset_)
+        if (IsValid(selectedAsset) && selectedActor->GetSequence() != selectedAsset)
         {
             ReportConfigurationError(TEXT("Sequence Asset must match the assigned Level Sequence Actor, or be empty."));
             return false;
         }
-        runtimeSequenceActor_ = sequenceActor_;
-        sequencePlayer_ = sequenceActor_->GetSequencePlayer();
-        previousPlaybackSettings_ = sequenceActor_->PlaybackSettings;
+        runtimeSequenceActor_ = selectedActor;
+        sequencePlayer_ = selectedActor->GetSequencePlayer();
+        previousPlaybackSettings_ = selectedActor->PlaybackSettings;
     }
-    else if (IsValid(sequenceAsset_))
+    else if (IsValid(selectedAsset))
     {
         FMovieSceneSequencePlaybackSettings settings = {};
         ALevelSequenceActor* createdActor = nullptr;
-        sequencePlayer_ = ULevelSequencePlayer::CreateLevelSequencePlayer(this, sequenceAsset_, settings, createdActor);
+        sequencePlayer_ = ULevelSequencePlayer::CreateLevelSequencePlayer(this, selectedAsset, settings, createdActor);
         runtimeSequenceActor_ = createdActor;
         createdSequenceActor_ = IsValid(createdActor);
         previousPlaybackSettings_ = settings;
@@ -286,6 +324,9 @@ bool AStairBossCinematicTrigger::PrepareSequencePlayer()
     sequencePlayer_->SetPlaybackSettings(settings);
     sequencePlayer_->OnFinished.AddDynamic(this, &AStairBossCinematicTrigger::HandleSequenceFinished);
     sequencePlayer_->OnStop.AddDynamic(this, &AStairBossCinematicTrigger::HandleSequenceStopped);
+    UE_LOG(LogStairBossCinematic, Log, TEXT("%s: selected %s sequence %s."),
+        *GetName(), hiddenEnding ? TEXT("hidden ending") : TEXT("normal/default"),
+        *GetNameSafe(runtimeSequenceActor_->GetSequence()));
     reportedConfigurationError_ = false;
     return true;
 }
